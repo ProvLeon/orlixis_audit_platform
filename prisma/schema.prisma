@@ -1,0 +1,289 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  projects Project[]
+  reports  Report[]
+  vulnerabilities Vulnerability[]
+  comments Comment[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+model Project {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  repositoryUrl String?
+  branch      String?     @default("main")
+  language    String[]
+  framework   String[]
+  size        BigInt      @default(0)
+  status      ProjectStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports       Report[]
+  vulnerabilities Vulnerability[]
+  scans         Scan[]
+  files         ProjectFile[]
+
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  PENDING
+  UPLOADING
+  ANALYZING
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+model ProjectFile {
+  id        String   @id @default(cuid())
+  filename  String
+  path      String
+  content   String   @db.Text
+  language  String?
+  size      Int
+  createdAt DateTime @default(now())
+  projectId String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vulnerabilities Vulnerability[]
+
+  @@map("project_files")
+}
+
+model Scan {
+  id          String     @id @default(cuid())
+  type        ScanType
+  status      ScanStatus @default(PENDING)
+  progress    Int        @default(0)
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+  error       String?
+  config      Json?
+  results     Json?
+  projectId   String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vulnerabilities Vulnerability[]
+
+  @@map("scans")
+}
+
+enum ScanType {
+  SECURITY
+  QUALITY
+  PERFORMANCE
+  DEPENDENCY
+  COMPREHENSIVE
+}
+
+enum ScanStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  name        String
+  type        ReportType
+  status      ReportStatus @default(GENERATING)
+  template    String       @default("default")
+  content     Json?
+  htmlContent String?      @db.Text
+  pdfUrl      String?
+  size        String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  projectId   String
+  userId      String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+enum ReportType {
+  SECURITY
+  QUALITY
+  PERFORMANCE
+  COMPREHENSIVE
+  EXECUTIVE_SUMMARY
+}
+
+enum ReportStatus {
+  GENERATING
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+model Vulnerability {
+  id            String              @id @default(cuid())
+  title         String
+  description   String              @db.Text
+  severity      VulnerabilitySeverity
+  category      VulnerabilityCategory
+  cwe           String?
+  cvss          Float?
+  cvssVector    String?
+  filePath      String
+  line          Int?
+  column        Int?
+  function      String?
+  code          String?             @db.Text
+  recommendation String            @db.Text
+  status        VulnerabilityStatus @default(OPEN)
+  discoveredAt  DateTime            @default(now())
+  resolvedAt    DateTime?
+  falsePositive Boolean             @default(false)
+  projectId     String
+  userId        String?
+  scanId        String?
+  fileId        String?
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id])
+  scan        Scan?        @relation(fields: [scanId], references: [id])
+  file        ProjectFile? @relation(fields: [fileId], references: [id])
+  comments    Comment[]
+
+  @@map("vulnerabilities")
+}
+
+enum VulnerabilitySeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum VulnerabilityCategory {
+  INJECTION
+  AUTHENTICATION
+  AUTHORIZATION
+  CRYPTOGRAPHY
+  CONFIGURATION
+  DEPENDENCY
+  CODE_QUALITY
+  BUSINESS_LOGIC
+  DATA_VALIDATION
+  SESSION_MANAGEMENT
+}
+
+enum VulnerabilityStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  WONT_FIX
+  FALSE_POSITIVE
+}
+
+model Comment {
+  id              String   @id @default(cuid())
+  content         String   @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  userId          String
+  vulnerabilityId String
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vulnerability Vulnerability @relation(fields: [vulnerabilityId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+
+  @@map("settings")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  resource  String
+  resourceId String?
+  userId    String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
