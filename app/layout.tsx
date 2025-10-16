@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://audit.orlixis.com",
+    url: "https://orlixis-audit-platform.vercel.app",
     title: "Orlixis Audit Platform",
     description: "Professional codebase auditing and analysis platform",
     siteName: "Orlixis Audit Platform",
@@ -82,7 +82,7 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/site.webmanifest",
-  metadataBase: new URL("https://audit.orlixis.com"),
+  metadataBase: new URL("https://orlixis-audit-platform.vercel.app"),
 };
 
 export default function RootLayout({
