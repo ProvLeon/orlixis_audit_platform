@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:production": "SKIP_ENV_VALIDATION=1 next build",
+    "build:no-check": "next build --no-lint",
     "start": "next start",
     "lint": "eslint",
     "check-oauth": "node scripts/check-oauth-setup.js"
