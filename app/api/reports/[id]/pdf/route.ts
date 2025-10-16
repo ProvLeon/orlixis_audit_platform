@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth/config"
 import { prisma } from "@/lib/prisma"
-import puppeteer from "puppeteer"
+import { vercelPdfGenerator } from "@/lib/pdf-utils-vercel"
+import { reactPdfGenerator } from "@/lib/pdf-react-generator"
 import { dedupeVulnerabilities, computeScoreAndRisk, unifySecurityMetric, countBySeverity } from "@/lib/reportTheme"
 
 export async function GET(
@@ -156,40 +157,16 @@ async function generateProfessionalPDF(
   vulnerabilities: any[],
   scan: any
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process',
-      '--disable-gpu'
-    ]
-  })
+  console.log('Starting PDF generation for report:', report.id)
 
+  // Strategy 1: Try Playwright with Chrome (HTML-based PDF)
   try {
-    const page = await browser.newPage()
+    console.log('Attempting PDF generation with Playwright...')
 
-    // Set viewport for consistent rendering
-    await page.setViewport({ width: 1200, height: 1600 })
-
-    // Generate professional HTML content
     const htmlContent = generateProfessionalHTML(report, project, vulnerabilities, scan)
 
-    // Set HTML content
-    await page.setContent(htmlContent, {
-      waitUntil: 'networkidle0',
-      timeout: 60000
-    })
-
-    // Generate PDF with professional formatting
-    const pdfBuffer = await page.pdf({
+    const pdfBuffer = await vercelPdfGenerator.generatePDF(htmlContent, {
       format: 'A4',
-      printBackground: true,
-      preferCSSPageSize: true,
       margin: {
         top: '15mm',
         right: '15mm',
@@ -206,13 +183,49 @@ async function generateProfessionalPDF(
         <div style="font-size: 9px; color: #666; text-align: center; width: 100%; padding: 5px;">
           <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span> | Generated on ${new Date().toLocaleDateString()}</span>
         </div>
-      `
+      `,
+      timeout: 120000 // 2 minutes timeout for serverless
     })
 
+    console.log('Playwright PDF generated successfully, size:', pdfBuffer.length, 'bytes')
     return pdfBuffer
 
-  } finally {
-    await browser.close()
+  } catch (playwrightError: any) {
+    console.warn('Playwright PDF generation failed, trying React PDF fallback:', playwrightError.message)
+
+    // Strategy 2: Fallback to React PDF (Chrome-free)
+    try {
+      console.log('Attempting PDF generation with React PDF...')
+
+      const pdfBuffer = await reactPdfGenerator.generatePDF(report, project, vulnerabilities, scan, {
+        format: 'A4',
+        timeout: 60000
+      })
+
+      console.log('React PDF generated successfully, size:', pdfBuffer.length, 'bytes')
+      return pdfBuffer
+
+    } catch (reactPdfError: any) {
+      console.error('Both PDF generation methods failed')
+      console.error('Playwright error:', playwrightError.message)
+      console.error('React PDF error:', reactPdfError.message)
+
+      // Provide comprehensive error information
+      throw new Error(`
+PDF generation failed with both methods:
+
+1. Playwright (Chrome-based): ${playwrightError.message}
+2. React PDF (Chrome-free): ${reactPdfError.message}
+
+This may be due to:
+- Missing dependencies (chrome-aws-lambda, playwright-core, @react-pdf/renderer)
+- Serverless environment limitations
+- Memory constraints
+- Network timeouts
+
+Please check your deployment configuration and try again.
+      `.trim())
+    }
   }
 }
 
@@ -264,7 +277,7 @@ function generateProfessionalHTML(
   })
 
   const getRiskLevel = (riskType: string) => {
-    switch(riskType) {
+    switch (riskType) {
       case 'LOW': return { level: 'LOW', color: '#007b8c' }
       case 'MEDIUM': return { level: 'MEDIUM', color: '#d97706' }
       case 'HIGH': return { level: 'HIGH', color: '#ea580c' }
@@ -662,9 +675,9 @@ function generateProfessionalHTML(
                 <p>This comprehensive security audit report provides a detailed analysis of the <strong style="color: #007b8c;">${project.name}</strong> project. The assessment covers security vulnerabilities, code quality metrics, and performance indicators.</p>
 
                 ${severityCounts.CRITICAL > 0 ?
-                    `<p><strong>Critical Findings:</strong> ${severityCounts.CRITICAL} critical vulnerabilities require immediate attention to prevent potential security breaches.</p>` :
-                    ''
-                }
+      `<p><strong>Critical Findings:</strong> ${severityCounts.CRITICAL} critical vulnerabilities require immediate attention to prevent potential security breaches.</p>` :
+      ''
+    }
 
                 <p>This professional audit provides detailed findings, risk assessments, and actionable recommendations to improve the security posture of your application.</p>
             </div>
@@ -696,15 +709,15 @@ function generateProfessionalHTML(
         <h2 class="section-title">Vulnerability Overview</h2>
         <div class="vulnerability-grid">
             ${Object.keys(severityColors).map(severity => {
-                const count = severityCounts[severity as keyof typeof severityCounts] || 0
-                const colors = severityColors[severity as keyof typeof severityColors]
-                return `
+      const count = severityCounts[severity as keyof typeof severityCounts] || 0
+      const colors = severityColors[severity as keyof typeof severityColors]
+      return `
                 <div class="vuln-summary" style="background: ${colors.bg}; border-color: ${colors.border};">
                     <div class="vuln-count" style="color: ${colors.text};">${count}</div>
                     <div class="vuln-label" style="color: #374151; font-weight: 600;">${severity}</div>
                 </div>
                 `
-            }).join('')}
+    }).join('')}
         </div>
     </div>
 
@@ -714,8 +727,8 @@ function generateProfessionalHTML(
     <div class="section">
         <h2 class="section-title">Detailed Findings</h2>
         ${sortedVulnerabilities.map((vuln, index) => {
-            const colors = severityColors[vuln.severity as keyof typeof severityColors]
-            return `
+      const colors = severityColors[vuln.severity as keyof typeof severityColors]
+      return `
             <div class="vulnerability-item avoid-break">
                 <div class="vuln-header">
                     <div>
@@ -759,7 +772,7 @@ function generateProfessionalHTML(
                 </div>
             </div>
             `
-        }).join('')}
+    }).join('')}
     </div>
     ` : ''}
 

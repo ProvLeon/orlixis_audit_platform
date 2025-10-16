@@ -40,6 +40,37 @@ const nextConfig = {
       }
     ],
   },
+  // Optimize for serverless PDF generation
+  experimental: {
+    serverComponentsExternalPackages: ['playwright-core', 'chrome-aws-lambda', '@react-pdf/renderer'],
+  },
+  // Webpack configuration for PDF generation libraries
+  webpack: (config: unknown, { isServer }: { isServer: unknown }) => {
+    if (isServer) {
+      // Externalize playwright and chrome dependencies for serverless
+      config.externals.push({
+        'playwright-core': 'commonjs playwright-core',
+        'chrome-aws-lambda': 'commonjs chrome-aws-lambda',
+      })
+    }
+
+    // Handle canvas and other native dependencies
+    config.resolve.alias.canvas = false
+    config.resolve.alias['pdfkit'] = false
+
+    return config
+  },
+  // API route configuration
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+    responseLimit: '20mb',
+  },
+  // Server-side configuration
+  serverRuntimeConfig: {
+    maxDuration: 300, // 5 minutes for PDF generation
+  },
 }
 
 module.exports = nextConfig
