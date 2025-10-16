@@ -9,7 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-orlixis-teal text-primary-foreground shadow hover:bg-orlixis-teal-dark active:bg-orlixis-teal-dark/90 focus-visible:ring-orlixis-teal",
+          "bg-orlixis-teal text-white shadow hover:bg-orlixis-teal-dark active:bg-orlixis-teal-dark/90 focus-visible:ring-orlixis-teal",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:

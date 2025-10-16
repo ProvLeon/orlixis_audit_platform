@@ -18,8 +18,8 @@ export function ThemeToggle() {
   const cycleTheme = () => {
     if (theme === "light") {
       setTheme("dark")
-    } else if (theme === "dark") {
-      setTheme("system")
+      // } else if (theme === "dark") {
+      //   setTheme("system")
     } else {
       setTheme("light")
     }
@@ -60,7 +60,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={cycleTheme}
-      className="h-9 w-9 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+      className="h-9 w-9 transition-all duration-200 hover:bg-muted"
       title={getTooltip()}
     >
       <div className="transition-transform duration-200">

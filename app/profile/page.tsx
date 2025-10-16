@@ -403,7 +403,7 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-2">
                     {isGithubLinked ? (
                       <>
-                        <Badge variant="success" size="sm">
+                        <Badge variant="success" size="sm" blurred translucent>
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Connected
                         </Badge>
@@ -454,7 +454,7 @@ export default function ProfilePage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant="info" size="sm">
+                  <Badge variant="info" size="sm" blurred translucent>
                     <Shield className="h-3 w-3 mr-1" />
                     Primary
                   </Badge>
@@ -485,7 +485,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Status</span>
-                  <Badge variant="success" size="sm">Active</Badge>
+                  <Badge variant="success" size="sm" blurred translucent>Active</Badge>
                 </div>
               </div>
             </CardContent>

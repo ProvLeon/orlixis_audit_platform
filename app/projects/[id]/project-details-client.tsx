@@ -224,15 +224,15 @@ export function ProjectDetailsClient({
   const securityStatus = getSecurityStatus()
 
   return (
-    <div className="min-h-screen bg-gradient-orlixis-subtle">
+    <div className="min-h-screen bg-background">
       <PageLayout
         title={project.name}
         description={project.description || "No description provided."}
         titleClassName="bg-gradient-to-r from-orlixis-teal to-orlixis-teal-light bg-clip-text text-transparent"
-        descriptionClassName="text-slate-600 dark:text-slate-300"
+        descriptionClassName="text-muted-foreground"
         headerExtras={
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5 text-orlixis-teal" />
                 Created {formatRelativeTime(project.createdAt)}
@@ -317,25 +317,25 @@ export function ProjectDetailsClient({
                   <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-orlixis-teal to-orlixis-teal-light bg-clip-text text-transparent">
                     {project.name}
                   </h1>
-                  <p className="text-lg text-slate-600 dark:text-slate-300 mt-1">
+                  <p className="text-lg text-muted-foreground mt-1">
                     {project.description || "No description provided"}
                   </p>
                 </div>
               </div>
 
               <div className="ml-auto flex items-center gap-4">
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
                   <span>Created {formatRelativeTime(project.createdAt)}</span>
                 </div>
                 {repoHost && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <GitBranch className="h-4 w-4" />
                     <span>{repoHost}</span>
                   </div>
                 )}
                 {sizeNumber > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Database className="h-4 w-4" />
                     <span>{formatBytes(sizeNumber)}</span>
                   </div>
@@ -347,62 +347,62 @@ export function ProjectDetailsClient({
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <Card className="group hover:shadow-lg transition-all duration-300 border-0 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Reports</p>
+                  <p className="text-sm font-medium text-muted-foreground">Reports</p>
                   <p className="text-2xl font-bold text-orlixis-teal">{reportsCount}</p>
                 </div>
                 <div className="p-2 rounded-lg bg-orlixis-teal/10">
                   <ClipboardList className="h-5 w-5 text-orlixis-teal" />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 {reports[0] ? `Last: ${formatRelativeTime(reports[0].createdAt)}` : "No reports yet"}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <Card className="group hover:shadow-lg transition-all duration-300 border-0  backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Scans</p>
+                  <p className="text-sm font-medium text-muted-foreground">Scans</p>
                   <p className="text-2xl font-bold text-orlixis-teal">{scansCount}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-orlixis-teal/10 dark:bg-orlixis-teal/20">
+                <div className="p-2 rounded-lg bg-orlixis-teal/10">
                   <Search className="h-5 w-5 text-orlixis-teal" />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 {displayScans[0] ? `Last: ${formatRelativeTime(displayScans[0].startedAt)}` : "No scans yet"}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <Card className="group hover:shadow-lg transition-all duration-300 border-0  backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Files</p>
+                  <p className="text-sm font-medium text-muted-foreground">Files</p>
                   <p className="text-2xl font-bold text-orlixis-teal">{filesCount}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-orlixis-teal/10 dark:bg-orlixis-teal/20">
+                <div className="p-2 rounded-lg bg-orlixis-teal/10">
                   <FileCode className="h-5 w-5 text-orlixis-teal" />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 {files.length > 0 ? `Last: ${formatRelativeTime(files[0].createdAt)}` : "No files yet"}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <Card className="group hover:shadow-lg transition-all duration-300 border-0  backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Security</p>
+                  <p className="text-sm font-medium text-muted-foreground">Security</p>
                   <p className={cn("text-2xl font-bold", securityStatus.color)}>{totalVulns}</p>
                 </div>
                 <div className={cn("p-2 rounded-lg",
@@ -411,7 +411,7 @@ export function ProjectDetailsClient({
                   <securityStatus.icon className={cn("h-5 w-5", securityStatus.color)} />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2 capitalize">
+              <p className="text-xs text-muted-foreground mt-2 capitalize">
                 {securityStatus.status.replace('-', ' ')}
               </p>
             </CardContent>
@@ -423,7 +423,7 @@ export function ProjectDetailsClient({
           {/* Left Column - Main Content */}
           <div className="xl:col-span-2 space-y-8">
             {/* Enhanced Overview */}
-            <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="border-0  backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-3 text-xl">
                   <div className="p-2 rounded-lg bg-orlixis-teal/10">
@@ -442,8 +442,8 @@ export function ProjectDetailsClient({
                       <BarChart3 className="h-5 w-5 text-orlixis-teal" />
                       <span className="font-medium text-orlixis-teal">Analysis Reports</span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{reportsCount}</div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <div className="text-3xl font-bold text-foreground mb-1">{reportsCount}</div>
+                    <p className="text-sm text-muted-foreground">
                       {reports[0] ? `Latest: ${formatRelativeTime(reports[0].createdAt)}` : "Generate your first report"}
                     </p>
                   </div>
@@ -453,8 +453,8 @@ export function ProjectDetailsClient({
                       <Target className="h-5 w-5 text-orlixis-teal" />
                       <span className="font-medium text-orlixis-teal">Active Scans</span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{scansCount}</div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <div className="text-3xl font-bold text-foreground mb-1">{scansCount}</div>
+                    <p className="text-sm text-muted-foreground">
                       {displayScans[0] ? `Latest: ${formatRelativeTime(displayScans[0].startedAt)}` : "Start your first scan"}
                     </p>
                   </div>
@@ -464,8 +464,8 @@ export function ProjectDetailsClient({
                       <Database className="h-5 w-5 text-orlixis-teal" />
                       <span className="font-medium text-orlixis-teal">Codebase Size</span>
                     </div>
-                    <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{filesCount}</div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <div className="text-3xl font-bold text-foreground mb-1">{filesCount}</div>
+                    <p className="text-sm text-muted-foreground">
                       {sizeNumber > 0 ? formatBytes(sizeNumber) : "Upload your code"}
                     </p>
                   </div>
@@ -489,7 +489,7 @@ export function ProjectDetailsClient({
             </Card>
 
             {/* Enhanced Scan Manager */}
-            <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg">
+            <Card className="border-0  backdrop-blur-sm shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl">
                   <div className="p-2 rounded-lg bg-orlixis-teal/10 dark:bg-orlixis-teal/20">
@@ -507,7 +507,7 @@ export function ProjectDetailsClient({
             </Card>
 
             {/* Enhanced Recent Reports */}
-            <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="border-0  backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl">
                   <div className="p-2 rounded-lg bg-orlixis-teal/10">
@@ -532,10 +532,10 @@ export function ProjectDetailsClient({
                             <ClipboardList className="h-4 w-4 text-orlixis-teal" />
                           </div>
                           <div>
-                            <div className="font-semibold text-slate-900 dark:text-white">
+                            <div className="font-semibold text-foreground">
                               Report #{report.id.slice(-8)}
                             </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-sm text-muted-foreground">
                               Generated {formatDateTime(report.createdAt)}
                             </div>
                           </div>
@@ -560,13 +560,13 @@ export function ProjectDetailsClient({
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 w-fit mx-auto mb-4">
-                      <ClipboardList className="h-8 w-8 text-slate-400" />
+                    <div className="p-4 rounded-full bg-muted w-fit mx-auto mb-4">
+                      <ClipboardList className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
                       No reports generated yet
                     </h3>
-                    <p className="text-slate-600 dark:text-slate-400 mb-4">
+                    <p className="text-muted-foreground mb-4">
                       Start a security scan to generate comprehensive analysis reports
                     </p>
                     <Button className="bg-orlixis-teal hover:bg-orlixis-teal-dark text-white">
@@ -581,7 +581,7 @@ export function ProjectDetailsClient({
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
             {/* Enhanced Languages & Technologies */}
-            <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="border-0  backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-orlixis-teal">
                   <Layers className="h-5 w-5" />
@@ -592,7 +592,7 @@ export function ProjectDetailsClient({
               <CardContent className="space-y-4">
                 {languages.length ? (
                   <div>
-                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Languages</h4>
+                    <h4 className="text-sm font-medium text-foreground mb-2">Languages</h4>
                     <div className="flex flex-wrap gap-2">
                       {languages.map((lang: string, index: number) => (
                         <Badge key={`${lang}-${index}`} variant="secondary" className="gap-1 px-3 py-1">
@@ -603,12 +603,12 @@ export function ProjectDetailsClient({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-sm">No languages detected</p>
+                  <p className="text-muted-foreground text-sm">No languages detected</p>
                 )}
 
                 {frameworks.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Frameworks</h4>
+                    <h4 className="text-sm font-medium text-foreground mb-2">Frameworks</h4>
                     <div className="flex flex-wrap gap-2">
                       {frameworks.map((framework: string, index: number) => (
                         <Badge key={`${framework}-${index}`} variant="outline" className="px-3 py-1">
@@ -622,7 +622,7 @@ export function ProjectDetailsClient({
             </Card>
 
             {/* Enhanced Repository Info */}
-            <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="border-0  backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-orlixis-teal">
                   <Globe className="h-5 w-5" />
@@ -633,7 +633,7 @@ export function ProjectDetailsClient({
               <CardContent>
                 {project.repositoryUrl ? (
                   <div className="space-y-4">
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border">
+                    <div className="p-3 rounded-lg bg-card border">
                       <a
                         href={project.repositoryUrl}
                         target="_blank"
@@ -655,15 +655,15 @@ export function ProjectDetailsClient({
                   </div>
                 ) : (
                   <div className="text-center py-4">
-                    <Globe className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-slate-500 text-sm">No repository linked</p>
+                    <Globe className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground text-sm">No repository linked</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Enhanced Security Overview */}
-            <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="border-0  backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-orlixis-teal">
                   <Shield className="h-5 w-5" />
@@ -674,13 +674,13 @@ export function ProjectDetailsClient({
               <CardContent>
                 {totalVulns > 0 ? (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                       <securityStatus.icon className={cn("h-5 w-5", securityStatus.color)} />
                       <div>
-                        <div className="font-medium text-slate-900 dark:text-white">
+                        <div className="font-medium text-foreground">
                           {totalVulns} Issues Found
                         </div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400 capitalize">
+                        <div className="text-sm text-muted-foreground capitalize">
                           {securityStatus.status.replace('-', ' ')} risk level
                         </div>
                       </div>
@@ -688,16 +688,18 @@ export function ProjectDetailsClient({
 
                     <div className="space-y-3">
                       {Object.entries(vulnBySeverity).map(([severity, count]) => (
-                        <div key={severity} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <div key={severity} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
                           <div className="flex items-center gap-3">
                             <Badge
                               variant={severityBadgeVariant(severity as VulnerabilitySeverity)}
                               className="capitalize px-2 py-1"
+                              blurred
+                              translucent
                             >
                               {severity.toLowerCase()}
                             </Badge>
                           </div>
-                          <span className="font-semibold text-slate-900 dark:text-white">{count}</span>
+                          <span className="font-semibold text-foreground">{count}</span>
                         </div>
                       ))}
                     </div>
@@ -705,10 +707,10 @@ export function ProjectDetailsClient({
                 ) : (
                   <div className="text-center py-6">
                     <CheckCircle2 className="h-12 w-12 text-orlixis-teal mx-auto mb-3" />
-                    <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                    <h3 className="font-semibold text-foreground mb-1">
                       All Clear!
                     </h3>
-                    <p className="text-slate-600 dark:text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                       No security vulnerabilities detected
                     </p>
                   </div>
@@ -717,7 +719,7 @@ export function ProjectDetailsClient({
             </Card>
 
             {/* Enhanced Files Preview */}
-            <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="border-0  backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-orlixis-teal">
                   <FileCode className="h-5 w-5" />

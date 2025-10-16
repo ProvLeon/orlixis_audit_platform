@@ -253,7 +253,7 @@ export function ScanManager({ projectId, className, showHistory = true }: ScanMa
       <CardContent className="space-y-6">
         {/* Current Scan Status */}
         {currentScan && (
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export function ScanManager({ projectId, className, showHistory = true }: ScanMa
                       key={type.id}
                       className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedScanType === type.id
                         ? `${type.bgColor} ${type.borderColor}`
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        : ' border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                         } ${isScanning ? 'opacity-60 pointer-events-none' : ''}`}
                       onClick={() => !isScanning && setSelectedScanType(type.id)}
                     >
@@ -334,7 +334,7 @@ export function ScanManager({ projectId, className, showHistory = true }: ScanMa
                         <type.icon className={`h-5 w-5 ${type.color} flex-shrink-0 mt-0.5`} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h5 className="font-medium text-slate-900 dark:text-slate-100 text-sm">
+                            <h5 className="font-medium  text-sm">
                               {type.name}
                             </h5>
                             {selectedScanType === type.id && (
@@ -387,14 +387,14 @@ export function ScanManager({ projectId, className, showHistory = true }: ScanMa
             <Separator />
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                <h4 className="text-sm font-medium text-foreground">
                   Recent Analysis
                 </h4>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={fetchScans}
-                  className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  className="text-primary"
                 >
                   <RotateCcw className="h-3 w-3" />
                 </Button>
@@ -404,12 +404,12 @@ export function ScanManager({ projectId, className, showHistory = true }: ScanMa
                 {recentScans.map((scan) => (
                   <div
                     key={scan.id}
-                    className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200 dark:border-slate-700"
+                    className="flex items-center justify-between p-3 bg-card rounded border border-slate-200 dark:border-slate-700"
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {getStatusIcon(scan.status)}
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                        <div className="text-sm font-medium text-secondary-foreground truncate">
                           {scan.type} Analysis
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">

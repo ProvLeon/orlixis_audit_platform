@@ -61,7 +61,7 @@ function SignInContent() {
   const [isLoading, setIsLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const callbackUrl = searchParams?.get("callbackUrl") || "/"
+  const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard"
   const errorParam = searchParams?.get("error")
 
   useEffect(() => {

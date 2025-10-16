@@ -24,7 +24,7 @@ export function ReportViewerWrapper({
 
   if (!isClient) {
     return (
-      <div className="h-full w-full bg-white dark:bg-gray-900 border rounded-lg flex items-center justify-center">
+      <div className="h-full w-full bg-background border rounded-lg flex items-center justify-center">
         <div className="text-center">
           <div className="loading-spinner mx-auto mb-4" />
           <p className="text-muted-foreground">Loading report viewer...</p>

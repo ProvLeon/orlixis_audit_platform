@@ -32,7 +32,7 @@ import {
 import { cn } from "@/lib/utils"
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Projects", href: "/projects", icon: Folder },
   { name: "Security", href: "/security", icon: Shield },
 ]
@@ -44,7 +44,7 @@ export function Header() {
   const [imageError, setImageError] = useState(false)
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: "/auth/signin" })
+    await signOut({ callbackUrl: "/" })
   }
 
   const getUserInitials = (name: string | null | undefined): string => {
@@ -213,7 +213,7 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-64"
+                className="w-64 bg-background"
                 align="end"
                 forceMount
                 sideOffset={8}

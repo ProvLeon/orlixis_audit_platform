@@ -90,18 +90,18 @@ export function ReportViewer({
 
   return (
     <div className={cn(
-      "flex flex-col h-full bg-gray-50 dark:bg-gray-900",
-      isFullscreen && "fixed inset-0 z-50 bg-white dark:bg-gray-900",
+      "flex flex-col h-full bg-background",
+      isFullscreen && "fixed inset-0 z-50 bg-background",
       className
     )}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b shadow-sm no-print">
+      <div className="flex items-center justify-between p-4 bg-background border-b shadow-sm no-print">
         <div className="flex items-center gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Security Report
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-foreground/60">
               {projectName} • Report #{reportId.slice(-8)}
             </p>
           </div>
@@ -118,7 +118,7 @@ export function ReportViewer({
             >
               <ZoomOut className="w-4 h-4" />
             </Button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[4rem] text-center">
+            <span className="text-sm text-foreground/40 min-w-[4rem] text-center">
               {zoom}%
             </span>
             <Button
@@ -168,7 +168,7 @@ export function ReportViewer({
           </Button>
 
           <Button
-            onClick={onDownloadPdf || (() => {})}
+            onClick={onDownloadPdf || (() => { })}
             disabled={!onDownloadPdf}
             className="gap-2 bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -178,7 +178,7 @@ export function ReportViewer({
 
           <Button
             variant="outline"
-            onClick={onShare || (() => {})}
+            onClick={onShare || (() => { })}
             disabled={!onShare}
             className="gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -189,9 +189,9 @@ export function ReportViewer({
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-background/90">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="w-full justify-start rounded-none border-b bg-white dark:bg-gray-800 no-print px-4">
+          <TabsList className="w-full justify-start rounded-none border-b bg-background no-print px-4">
             <TabsTrigger value="formatted" className="gap-2">
               <FileText className="w-4 h-4" />
               Formatted Report
@@ -242,8 +242,8 @@ export function ReportViewer({
                     </p>
                   </CardHeader>
                   <CardContent>
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 overflow-auto">
-                      <pre className="text-xs leading-relaxed text-gray-800 dark:text-gray-200">
+                    <div className="rounded-lg p-4 overflow-auto">
+                      <pre className="text-xs leading-relaxed text-foreground/70">
                         {JSON.stringify(reportData, null, 2)}
                       </pre>
                     </div>
@@ -316,7 +316,7 @@ export function ReportViewer({
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-800 border-t text-xs text-gray-600 dark:text-gray-400 no-print">
+      <div className="flex items-center justify-between px-4 py-2 bg-background border-t text-xs text-gray-600 dark:text-gray-400 no-print">
         <div className="flex items-center gap-4">
           <span>Report ID: {reportId}</span>
           <span>•</span>

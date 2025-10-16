@@ -152,7 +152,7 @@ function transformReportData(report: any, project: any, vulnerabilities: any[], 
 
   // Compute unified score and risk using shared utilities
   const { score: overallScore, risk } = computeScoreAndRisk(groupedFindings)
-    return {
+  return {
     project: {
       id: project.id || "",
       name: project.name || "Unknown Project",
@@ -448,7 +448,7 @@ export default async function ReportDetailsPage({
       headerExtras={
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <Badge variant={statusBadgeVariant(report.status)} className="capitalize">
+            <Badge variant={statusBadgeVariant(report.status)} className="capitalize" blurred translucent>
               <span className="inline-flex items-center gap-1">
                 {statusIcon(report.status)}
                 {report.status.toLowerCase()}
@@ -495,7 +495,7 @@ export default async function ReportDetailsPage({
 
       {/* Additional Report Info */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-shrink-0">
-        <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg">
+        <Card className="border-1 backdrop-blur-sm shadow-lg">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-teal-600" />
@@ -505,7 +505,7 @@ export default async function ReportDetailsPage({
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Status</span>
-              <Badge variant={statusBadgeVariant(report.status)} size="sm" className="capitalize">
+              <Badge variant={statusBadgeVariant(report.status)} size="sm" className="capitalize" blurred translucent>
                 {report.status.toLowerCase()}
               </Badge>
             </div>
@@ -529,7 +529,7 @@ export default async function ReportDetailsPage({
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg">
+        <Card className="border-1 backdrop-blur-sm shadow-lg">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-teal-600" />
@@ -559,7 +559,7 @@ export default async function ReportDetailsPage({
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg">
+        <Card className="border-1  backdrop-blur-sm shadow-lg">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
               <Layers className="h-5 w-5 text-teal-600" />

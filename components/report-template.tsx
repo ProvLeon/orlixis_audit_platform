@@ -215,7 +215,7 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
             <a href="#vuln-overview" className="block text-slate-700 hover:text-[#007b8c]">Vulnerability Overview</a>
             <a href="#detailed-findings" className="block text-slate-700 hover:text-[#007b8c]">
               Findings
-              <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">{vulnerabilities.length}</span>
+              <span className="ml-2 inline-flex items-center rounded-full bg-warning/40 px-2 py-0.5 text-[10px] text-slate-700">{vulnerabilities.length}</span>
             </a>
             <div className="mt-3 pt-3 border-t">
               <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">By severity</div>
@@ -233,85 +233,85 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
           </nav>
         </aside>
         <div className="min-w-0 flex-1">
-      {/* Report Header */}
-      <header className="mb-8 print:mb-6 flex-shrink-0">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#007b8c] to-[#008da0] rounded-lg flex items-center justify-center shadow-lg">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
+          {/* Report Header */}
+          <header className="mb-8 print:mb-6 flex-shrink-0">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 print:text-black">
-                  Security Audit Report
-                </h1>
-                <p className="text-lg text-slate-700 font-medium">Project: {project.name}</p>
-              </div>
-            </div>
-          </div>
-          <div className="text-right text-sm text-slate-600 no-print">
-            <p><span className="font-semibold">Report ID:</span> {reportId}</p>
-            <p><span className="font-semibold">Generated:</span> {formatDateTime(generatedAt || new Date())}</p>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-slate-50 to-[#f0fdfa] border-2 border-[#007b8c]/20 rounded-lg p-6 print:border-black shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div>
-              <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Project Details</h3>
-              <div className="space-y-2 text-sm">
-                <p><span className="font-semibold text-[#007b8c]">Languages:</span> <span className="text-slate-700">{project.language.join(", ")}</span></p>
-                <p><span className="font-semibold text-[#007b8c]">Framework:</span> <span className="text-slate-700">{project.framework.join(", ")}</span></p>
-                <p><span className="font-semibold text-[#007b8c]">Files:</span> <span className="text-slate-700">{project.totalFiles.toLocaleString()}</span></p>
-                <p><span className="font-semibold text-[#007b8c]">Lines:</span> <span className="text-slate-700">{project.totalLines.toLocaleString()}</span></p>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Scan Information</h3>
-              <div className="space-y-2 text-sm">
-                <p><span className="font-semibold text-[#007b8c]">Type:</span> <span className="text-slate-700">{scan.type}</span></p>
-                <p><span className="font-semibold text-[#007b8c]">Started:</span> <span className="text-slate-700">{formatDateTime(scan.startedAt)}</span></p>
-                <p><span className="font-semibold text-[#007b8c]">Completed:</span> <span className="text-slate-700">{formatDateTime(scan.completedAt)}</span></p>
-                <p><span className="font-semibold text-[#007b8c]">Duration:</span> <span className="text-slate-700">{Math.round(scan.duration / 1000)}s</span></p>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Overall Score</h3>
-              <div className="flex items-center gap-3">
-                <div className={cn("text-4xl font-bold", getScoreColor(summary.overallScore))}>
-                  {summary.overallScore}
-                </div>
-                <div className="flex-1">
-                  <div className="w-full bg-slate-200 rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-[#007b8c] to-[#008da0] h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${summary.overallScore}%` }}
-                    ></div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#007b8c] to-[#008da0] rounded-lg flex items-center justify-center shadow-lg">
+                    <FileText className="w-6 h-6 text-white" />
                   </div>
-                  <p className="text-xs text-slate-600 mt-1 font-medium">Security Score</p>
+                  <div>
+                    <h1 className="text-3xl font-bold text-slate-900 print:text-black">
+                      Security Audit Report
+                    </h1>
+                    <p className="text-lg text-slate-700 font-medium">Project: {project.name}</p>
+                  </div>
                 </div>
+              </div>
+              <div className="text-right text-sm text-slate-600 no-print">
+                <p><span className="font-semibold">Report ID:</span> {reportId}</p>
+                <p><span className="font-semibold">Generated:</span> {formatDateTime(generatedAt || new Date())}</p>
               </div>
             </div>
 
-            <div>
-              <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Risk Level</h3>
-              <div className="flex items-center gap-2">
-                {React.createElement(riskLevelConfig[summary.riskLevel].icon, {
-                  className: cn("w-6 h-6", riskLevelConfig[summary.riskLevel].color)
-                })}
-                <span className={cn("text-xl font-bold", riskLevelConfig[summary.riskLevel].color)}>
-                  {summary.riskLevel}
-                </span>
+            <div className="bg-gradient-to-br from-slate-50 to-[#f0fdfa] border-2 border-[#007b8c]/20 rounded-lg p-6 print:border-black shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                  <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Project Details</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-semibold text-[#007b8c]">Languages:</span> <span className="text-slate-700">{project.language.join(", ")}</span></p>
+                    <p><span className="font-semibold text-[#007b8c]">Framework:</span> <span className="text-slate-700">{project.framework.join(", ")}</span></p>
+                    <p><span className="font-semibold text-[#007b8c]">Files:</span> <span className="text-slate-700">{project.totalFiles.toLocaleString()}</span></p>
+                    <p><span className="font-semibold text-[#007b8c]">Lines:</span> <span className="text-slate-700">{project.totalLines.toLocaleString()}</span></p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Scan Information</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-semibold text-[#007b8c]">Type:</span> <span className="text-slate-700">{scan.type}</span></p>
+                    <p><span className="font-semibold text-[#007b8c]">Started:</span> <span className="text-slate-700">{formatDateTime(scan.startedAt)}</span></p>
+                    <p><span className="font-semibold text-[#007b8c]">Completed:</span> <span className="text-slate-700">{formatDateTime(scan.completedAt)}</span></p>
+                    <p><span className="font-semibold text-[#007b8c]">Duration:</span> <span className="text-slate-700">{Math.round(scan.duration / 1000)}s</span></p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Overall Score</h3>
+                  <div className="flex items-center gap-3">
+                    <div className={cn("text-4xl font-bold", getScoreColor(summary.overallScore))}>
+                      {summary.overallScore}
+                    </div>
+                    <div className="flex-1">
+                      <div className="w-full bg-slate-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-[#007b8c] to-[#008da0] h-3 rounded-full transition-all duration-300"
+                          style={{ width: `${summary.overallScore}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1 font-medium">Security Score</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-wide">Risk Level</h3>
+                  <div className="flex items-center gap-2">
+                    {React.createElement(riskLevelConfig[summary.riskLevel].icon, {
+                      className: cn("w-6 h-6", riskLevelConfig[summary.riskLevel].color)
+                    })}
+                    <span className={cn("text-xl font-bold", riskLevelConfig[summary.riskLevel].color)}>
+                      {summary.riskLevel}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-700 mt-1 font-medium">
+                    {summary.totalIssues} total issues found
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-slate-700 mt-1 font-medium">
-                {summary.totalIssues} total issues found
-              </p>
             </div>
-          </div>
-        </div>
-      </header>
+          </header>
         </div>
       </div>
 
@@ -394,7 +394,7 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
                 const CategoryIcon = getCategoryIcon(vuln.category)
 
                 return (
-                  <Card key={vuln.id} className="border print:border-black print:break-inside-avoid">
+                  <Card key={vuln.id} className="border print:border-black print:break-inside-avoid bg-white">
                     <CardHeader className="pb-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -403,7 +403,7 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
                               <Icon className="w-3 h-3 mr-1" />
                               {vuln.severity}
                             </Badge>
-                            <Badge variant="outline" className="border-gray-200">
+                            <Badge variant="outline" className="border-gray-200 text-gray-700">
                               <CategoryIcon className="w-3 h-3 mr-1" />
                               {vuln.category}
                             </Badge>
@@ -418,7 +418,7 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
                           </CardTitle>
                           <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
                             <span className="text-gray-500 font-medium">@</span>
-                            <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
+                            <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono text-gray-100">
                               {vuln.location.file}
                               {vuln.location.line && `:${vuln.location.line}`}
                             </code>
@@ -449,9 +449,9 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
                       </div>
 
                       {vuln.cwe && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 text-sm text-gray-900">
                           <span className="font-medium">CWE:</span>
-                          <code className="bg-gray-100 px-2 py-1 rounded">{vuln.cwe}</code>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-gray-100">{vuln.cwe}</code>
                         </div>
                       )}
                     </CardContent>
@@ -470,17 +470,17 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
             {qualityMetrics.map((metric) => {
               const percentage = (metric.score / metric.maxScore) * 100
               const TrendIcon = metric.trend === "up" ? TrendingUp :
-                               metric.trend === "down" ? TrendingDown : Minus
+                metric.trend === "down" ? TrendingDown : Minus
 
               return (
-                <Card key={metric.name} className="border print:border-black">
+                <Card key={metric.name} className="border print:border-black bg-white">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-gray-900">{metric.name}</h3>
                       <TrendIcon className={cn(
                         "w-5 h-5",
                         metric.trend === "up" ? "text-green-600" :
-                        metric.trend === "down" ? "text-red-600" : "text-gray-400"
+                          metric.trend === "down" ? "text-red-600" : "text-gray-400"
                       )} />
                     </div>
 
@@ -492,7 +492,7 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
                         <span className={cn(
                           "text-sm font-medium",
                           percentage >= 80 ? "text-teal-600" :
-                          percentage >= 60 ? "text-orange-600" : "text-red-600"
+                            percentage >= 60 ? "text-orange-600" : "text-red-600"
                         )}>
                           {percentage.toFixed(1)}%
                         </span>
@@ -503,8 +503,8 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
                           className={cn(
                             "h-2 rounded-full transition-all duration-300",
                             percentage >= 80 ? "bg-gradient-to-r from-teal-500 to-teal-600" :
-                            percentage >= 60 ? "bg-gradient-to-r from-orange-400 to-orange-500" :
-                            "bg-gradient-to-r from-red-400 to-red-500"
+                              percentage >= 60 ? "bg-gradient-to-r from-orange-400 to-orange-500" :
+                                "bg-gradient-to-r from-red-400 to-red-500"
                           )}
                           style={{ width: `${percentage}%` }}
                         ></div>
@@ -585,7 +585,7 @@ export function ReportTemplate({ data, reportId, generatedAt, className }: Repor
                 }
 
                 return (
-                  <Card key={index} className="border print:border-black">
+                  <Card key={index} className="border print:border-black bg-white">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="font-semibold text-gray-900 text-lg">{rec.title}</h3>
