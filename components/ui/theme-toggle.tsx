@@ -33,8 +33,8 @@ export function ThemeToggle() {
         return <Sun className="h-4 w-4" />
       case "dark":
         return <Moon className="h-4 w-4" />
-      case "system":
-        return <Monitor className="h-4 w-4" />
+      // case "system":
+      //   return <Monitor className="h-4 w-4" />
       default:
         return <Sun className="h-4 w-4" />
     }
