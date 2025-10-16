@@ -9,9 +9,10 @@ import {
   CheckCircle,
   ChevronRight,
   Download,
-  Filter,
+  FolderOpen,
   Pause,
   Play,
+  Plus,
   RefreshCw,
   Search,
   Shield,
@@ -93,6 +94,7 @@ export default function SecurityClient({
   initialProjectId,
   className,
 }: SecurityClientProps) {
+
   const [projectId, setProjectId] = useState<string>(() => initialProjectId || projects[0]?.id || "")
   const [scans, setScans] = useState<ScanListItem[]>([])
   const [scansLoading, setScansLoading] = useState(false)
@@ -123,81 +125,91 @@ export default function SecurityClient({
     }
   }
 
-  const startPolling = useCallback((id: string) => {
+  useEffect(() => stopPolling, [])
+
+  const startPolling = useCallback((scanId: string) => {
     stopPolling()
     pollRef.current = setInterval(() => {
-      fetchScanDetails(id)
+      fetch(`/api/scans/${encodeURIComponent(scanId)}`)
+        .then(res => res.json())
+        .then((data: ScanSummary) => {
+          setScanSummary(data)
+          if (data?.scan?.status !== "RUNNING" && data?.scan?.status !== "PENDING") {
+            stopPolling()
+          }
+        })
+        .catch(console.error)
     }, 4000)
   }, [])
 
-  useEffect(() => stopPolling, [])
-
-  async function fetchScans(selectedProjectId: string) {
-    setScansLoading(true)
-    setScansError(null)
-    try {
-      const res = await fetch(`/api/scans?projectId=${encodeURIComponent(selectedProjectId)}`)
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data?.error || "Failed to fetch scans")
-      }
-      const data = (await res.json()) as { scans: ScanListItem[] }
-      setScans(data.scans || [])
-      // Auto-select most recent scan if none selected
-      if (!selectedScanId && (data.scans || []).length > 0) {
-        setSelectedScanId(data.scans[0].id)
-      }
-    } catch (err: any) {
-      setScansError(err?.message || String(err))
-    } finally {
-      setScansLoading(false)
-    }
-  }
-
-  async function fetchScanDetails(id: string) {
-    setSummaryLoading(true)
-    try {
-      const res = await fetch(`/api/scans/${encodeURIComponent(id)}`)
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data?.error || "Failed to fetch scan details")
-      }
-      const data = (await res.json()) as ScanSummary
-      setScanSummary(data)
-
-      // If scan still running, keep polling
-      if (scanIsActive(data?.scan?.status)) {
-        startPolling(id)
-      } else {
-        stopPolling()
-      }
-    } catch (err) {
-      // Non-fatal for UI
-      console.error(err)
-    } finally {
-      setSummaryLoading(false)
-    }
-  }
-
   // Initial + when project changes
   useEffect(() => {
-    if (projectId) {
-      fetchScans(projectId)
-    }
-    // cleanup summary state if project changes
+
+    if (!projectId) return
+
+    setScansLoading(true)
+    setScansError(null)
     setScanSummary(null)
     setSelectedScanId(null)
     stopPolling()
+
+    fetch(`/api/scans?projectId=${encodeURIComponent(projectId)}`)
+      .then(res => {
+        if (!res.ok) {
+          return res.json().catch(() => ({})).then(data => {
+            throw new Error((data as { error?: string })?.error || "Failed to fetch scans")
+          })
+        }
+        return res.json()
+      })
+      .then((data: { scans: ScanListItem[] }) => {
+        setScans(data.scans || [])
+        // Auto-select most recent scan if none selected and scans exist
+        if ((data.scans || []).length > 0) {
+          setSelectedScanId(data.scans[0].id)
+        }
+        setScansLoading(false)
+      })
+      .catch((err: unknown) => {
+        setScansError(err instanceof Error ? err.message : String(err))
+        setScansLoading(false)
+      })
   }, [projectId])
 
   // When selected scan changes, fetch summary
   useEffect(() => {
-    if (selectedScanId) {
-      fetchScanDetails(selectedScanId)
-    } else {
+
+    if (!selectedScanId) {
       setScanSummary(null)
+      stopPolling()
+      return
     }
-  }, [selectedScanId])
+
+    setSummaryLoading(true)
+    fetch(`/api/scans/${encodeURIComponent(selectedScanId)}`)
+      .then(res => {
+        if (!res.ok) {
+          return res.json().catch(() => ({})).then(data => {
+            throw new Error((data as { error?: string })?.error || "Failed to fetch scan details")
+          })
+        }
+        return res.json()
+      })
+      .then((data: ScanSummary) => {
+        setScanSummary(data)
+        // If scan still running, keep polling
+        if (data?.scan?.status === "RUNNING" || data?.scan?.status === "PENDING") {
+          startPolling(selectedScanId)
+        } else {
+          stopPolling()
+        }
+        setSummaryLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setSummaryLoading(false)
+      })
+  }, [selectedScanId, startPolling])
 
   async function handleStartScan() {
     if (!projectId) return
@@ -208,19 +220,28 @@ export default function SecurityClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, type: "COMPREHENSIVE" }),
       })
-      const data = await res.json()
+      const data = (await res.json()) as { error?: string; scan?: ScanListItem }
       if (!res.ok) {
         throw new Error(data?.error || "Failed to start scan")
       }
 
       const scan = data.scan as ScanListItem
       // refresh scans, select new one, start polling
-      await fetchScans(projectId)
+      try {
+        const res = await fetch(`/api/scans?projectId=${encodeURIComponent(projectId)}`)
+        if (res.ok) {
+          const scanData = (await res.json()) as { scans: ScanListItem[] }
+          setScans(scanData.scans || [])
+        }
+      } catch (err) {
+        console.error("Failed to refresh scans:", err)
+      }
       setSelectedScanId(scan.id)
       startPolling(scan.id)
-    } catch (err: any) {
-      console.error("Start scan error:", err?.message || err)
-      alert(err?.message || "Failed to start scan")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error("Start scan error:", message)
+      alert(message || "Failed to start scan")
     } finally {
       setStartingScan(false)
     }
@@ -231,22 +252,31 @@ export default function SecurityClient({
       const res = await fetch(`/api/scans/${encodeURIComponent(id)}`, { method: "DELETE" })
       if (!res.ok && res.status !== 204) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data?.error || "Failed to cancel scan")
+        throw new Error((data as { error?: string })?.error || "Failed to cancel scan")
       }
       stopPolling()
-      await fetchScans(projectId)
-      // If we canceled the currently selected scan, reselect the most recent
-      if (selectedScanId === id) {
-        const next = scans.filter((s) => s.id !== id)[0]
-        setSelectedScanId(next?.id || null)
+      try {
+        const res = await fetch(`/api/scans?projectId=${encodeURIComponent(projectId)}`)
+        if (res.ok) {
+          const scanData = (await res.json()) as { scans: ScanListItem[] }
+          const newScans = scanData.scans || []
+          setScans(newScans)
+          // If we canceled the currently selected scan, reselect the most recent
+          if (selectedScanId === id) {
+            const next = newScans.filter((s) => s.id !== id)[0]
+            setSelectedScanId(next?.id || null)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to refresh scans:", err)
       }
-    } catch (err: any) {
-      console.error("Cancel scan error:", err?.message || err)
-      alert(err?.message || "Failed to cancel scan")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error("Cancel scan error:", message)
+      alert(message || "Failed to cancel scan")
     }
   }
 
-  // Compute score and risk from summary counts
   const scoreAndRisk = useMemo(() => {
     const v = scanSummary?.vulnerabilities
     if (!v) return { score: 100, risk: "LOW" as const }
@@ -257,7 +287,7 @@ export default function SecurityClient({
       ...Array(v.low).fill({ severity: "LOW" }),
       ...Array(v.info).fill({ severity: "INFO" }),
     ] as Array<{ severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO" }>
-    return computeScoreAndRisk(list as any)
+    return computeScoreAndRisk(list)
   }, [scanSummary])
 
   // Filtered summary preview text
@@ -268,7 +298,7 @@ export default function SecurityClient({
     let count = v.total
     if (severityFilter !== "ALL") {
       const key = severityFilter.toLowerCase() as "critical" | "high" | "medium" | "low" | "info"
-      count = (v as any)[key] || 0
+      count = v[key] || 0
     }
     // statusFilter only affects open/resolved preview in this summary-only UI
     if (statusFilter !== "ALL") {
@@ -333,6 +363,86 @@ export default function SecurityClient({
 
   const isRunning = scanIsActive(scanSummary?.scan?.status)
 
+  // Show empty state if no projects
+  if (projects.length === 0) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        <Card>
+          <CardContent className="p-12">
+            <div className="text-center space-y-6">
+              <div className="flex items-center justify-center">
+                <div className="h-24 w-24 rounded-full bg-teal-100 flex items-center justify-center">
+                  <Shield className="h-12 w-12 text-teal-600" />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-2xl font-semibold text-slate-900 dark:text-white">
+                  No projects found
+                </h3>
+                <p className="text-slate-600 dark:text-slate-300 max-w-md mx-auto">
+                  To run security scans, you&apos;ll need to upload a project first.
+                  Get started by creating your first project.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button asChild className="bg-teal-600 hover:bg-teal-700">
+                  <Link href="/projects/upload">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Upload Project
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/projects">
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    View Projects
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="pt-6 border-t">
+                <div className="text-left space-y-4 max-w-2xl mx-auto">
+                  <h4 className="font-medium text-slate-900 dark:text-white">Getting started:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600 dark:text-slate-300">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold text-xs">1</div>
+                      <div>
+                        <div className="font-medium">Upload your code</div>
+                        <div>Upload files or connect a Git repository</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold text-xs">2</div>
+                      <div>
+                        <div className="font-medium">Start a security scan</div>
+                        <div>Run comprehensive security analysis</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold text-xs">3</div>
+                      <div>
+                        <div className="font-medium">Review findings</div>
+                        <div>Identify and prioritize vulnerabilities</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold text-xs">4</div>
+                      <div>
+                        <div className="font-medium">Generate reports</div>
+                        <div>Export professional security reports</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Toolbar */}
@@ -350,8 +460,8 @@ export default function SecurityClient({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
-          </div>
+            </Select >
+          </div >
 
           <div className="flex items-center gap-2">
             <Select
@@ -381,7 +491,7 @@ export default function SecurityClient({
                 <SelectItem value="IN_PROGRESS">In progress</SelectItem>
                 <SelectItem value="RESOLVED">Resolved</SelectItem>
                 <SelectItem value="FALSE_POSITIVE">False positive</SelectItem>
-                <SelectItem value="WONT_FIX">Won't fix</SelectItem>
+                <SelectItem value="WONT_FIX">Won&apos;t fix</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -395,13 +505,37 @@ export default function SecurityClient({
               className="pl-8"
             />
           </div>
-        </div>
+        </div >
 
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             className="gap-2"
-            onClick={() => projectId && fetchScans(projectId)}
+            onClick={() => {
+              if (!projectId) return
+
+              setScansLoading(true)
+              setScansError(null)
+
+              fetch(`/api/scans?projectId=${encodeURIComponent(projectId)}`)
+                .then(res => {
+                  if (!res.ok) {
+                    return res.json().catch(() => ({})).then(data => {
+                      throw new Error((data as { error?: string })?.error || "Failed to fetch scans")
+                    })
+                  }
+                  return res.json()
+                })
+                .then((data: { scans: ScanListItem[] }) => {
+                  setScans(data.scans || [])
+                  setScansLoading(false)
+                })
+                .catch(err => {
+                  console.error("Failed to refresh scans:", err)
+                  setScansError(err instanceof Error ? err.message : String(err))
+                  setScansLoading(false)
+                })
+            }}
             disabled={scansLoading}
             aria-label="Refresh scans"
           >
@@ -409,7 +543,7 @@ export default function SecurityClient({
             Refresh
           </Button>
           <Button
-            className="gap-2 bg-teal-600 hover:bg-teal-700"
+            className="gap-2 bg-orlixis-teal hover:bg-orlixis-teal-light"
             onClick={handleStartScan}
             disabled={!projectId || startingScan}
             aria-label="Start a new scan"
@@ -425,21 +559,30 @@ export default function SecurityClient({
             )}
           </Button>
         </div>
-      </div>
+      </div >
 
       {/* Metrics */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      < div className="grid grid-cols-1 gap-4 md:grid-cols-4" >
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Security Score</p>
-                <p className="mt-1 text-3xl font-semibold">
-                  {scanSummary ? scoreAndRisk.score : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {scanSummary ? `${scoreAndRisk.risk} risk` : "Run a scan to compute score"}
-                </p>
+                {summaryLoading ? (
+                  <div className="mt-1 animate-pulse">
+                    <div className="h-9 w-16 bg-muted rounded"></div>
+                    <div className="h-3 w-20 bg-muted rounded mt-1"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-1 text-3xl font-semibold">
+                      {scanSummary ? scoreAndRisk.score : "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {scanSummary ? `${scoreAndRisk.risk} risk` : "Run a scan to compute score"}
+                    </p>
+                  </>
+                )}
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orlixis-teal/10">
                 <Shield className="h-6 w-6 text-orlixis-teal" />
@@ -453,13 +596,22 @@ export default function SecurityClient({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Issues</p>
-                <p className="mt-1 text-3xl font-semibold">
-                  {scanSummary?.vulnerabilities.total ?? "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Across all severities</p>
+                {summaryLoading ? (
+                  <div className="mt-1 animate-pulse">
+                    <div className="h-9 w-12 bg-muted rounded"></div>
+                    <div className="h-3 w-24 bg-muted rounded mt-1"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-1 text-3xl font-semibold">
+                      {scanSummary?.vulnerabilities.total ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Across all severities</p>
+                  </>
+                )}
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-900/40">
+                <AlertTriangle className="h-6 w-6 text-red-700" />
               </div>
             </div>
           </CardContent>
@@ -470,13 +622,22 @@ export default function SecurityClient({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Critical</p>
-                <p className="mt-1 text-3xl font-semibold text-red-600">
-                  {scanSummary?.vulnerabilities.critical ?? "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Immediate attention</p>
+                {summaryLoading ? (
+                  <div className="mt-1 animate-pulse">
+                    <div className="h-9 w-8 bg-muted rounded"></div>
+                    <div className="h-3 w-28 bg-muted rounded mt-1"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-1 text-3xl font-semibold text-red-600">
+                      {scanSummary?.vulnerabilities.critical ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Immediate attention</p>
+                  </>
+                )}
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100">
-                <AlertCircle className="h-6 w-6 text-red-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-900/40">
+                <AlertCircle className="h-6 w-6 text-red-700" />
               </div>
             </div>
           </CardContent>
@@ -487,23 +648,32 @@ export default function SecurityClient({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Resolved</p>
-                <p className="mt-1 text-3xl font-semibold text-green-600">
-                  {scanSummary?.vulnerabilities.resolved ?? "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Remediated issues</p>
+                {summaryLoading ? (
+                  <div className="mt-1 animate-pulse">
+                    <div className="h-9 w-8 bg-muted rounded"></div>
+                    <div className="h-3 w-28 bg-muted rounded mt-1"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-1 text-3xl font-semibold text-green-600">
+                      {scanSummary?.vulnerabilities.resolved ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Remediated issues</p>
+                  </>
+                )}
               </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orlixis-teal-light/30">
+                <CheckCircle className="h-6 w-6 text-orlixis-teal" />
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div >
 
       {/* Main grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      < div className="grid grid-cols-1 gap-6 lg:grid-cols-3" >
         {/* Left: Selected scan details */}
-        <div className="space-y-6 lg:col-span-2">
+        < div className="space-y-6 lg:col-span-2" >
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -514,7 +684,7 @@ export default function SecurityClient({
                       <>
                         {scanSummary.scan.type.toLowerCase()} •{" "}
                         {formatRelativeTime(
-                          (scanSummary.scan.startedAt as any) || new Date().toISOString()
+                          String(scanSummary.scan.startedAt) || new Date().toISOString()
                         )}
                       </>
                     ) : (
@@ -548,11 +718,48 @@ export default function SecurityClient({
               </div>
             </CardHeader>
             <CardContent>
-              {!scanSummary && (
+              {!scanSummary && summaryLoading && (
+                <div className="space-y-5 animate-pulse">
+                  {/* Progress skeleton */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-20 bg-muted rounded"></div>
+                      <div className="h-4 w-16 bg-muted rounded"></div>
+                    </div>
+                    <div className="h-4 w-24 bg-muted rounded"></div>
+                  </div>
+                  <div className="h-2 w-full bg-muted rounded"></div>
+
+                  {/* Severity distribution skeleton */}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="text-center">
+                        <div className="h-4 w-12 bg-muted rounded mb-1 mx-auto"></div>
+                        <div className="h-6 w-8 bg-muted rounded mx-auto"></div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Filtered preview skeleton */}
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="h-4 w-20 bg-muted rounded"></div>
+                      <div className="h-8 w-12 bg-muted rounded"></div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 w-full bg-muted rounded"></div>
+                      <div className="h-3 w-3/4 bg-muted rounded"></div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="h-9 w-32 bg-muted rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!scanSummary && !summaryLoading && (
                 <div className="text-sm text-muted-foreground">
-                  {summaryLoading
-                    ? "Loading scan details..."
-                    : "No scan selected. Start a scan or choose one from the list."}
+                  No scan selected. Start a scan or choose one from the list.
                 </div>
               )}
 
@@ -573,8 +780,8 @@ export default function SecurityClient({
                     <div className="text-xs text-muted-foreground">
                       {scanSummary.scan.estimatedCompletion
                         ? `ETA: ${formatRelativeTime(
-                            (scanSummary.scan.estimatedCompletion as any) || new Date().toISOString()
-                          )}`
+                          String(scanSummary.scan.estimatedCompletion) || new Date().toISOString()
+                        )}`
                         : null}
                     </div>
                   </div>
@@ -618,27 +825,52 @@ export default function SecurityClient({
               )}
             </CardContent>
           </Card>
-        </div>
+        </div >
 
         {/* Right: Scans list */}
-        <div className="space-y-3">
+        < div className="space-y-3 w-auto md:w-full lg:w-[380px] 2xl:w-[480px]" >
           <Card>
             <CardHeader>
-              <CardTitle>Recent Scans</CardTitle>
-              <CardDescription>
-                {selectedProject ? `Project: ${selectedProject.name}` : "Select a project"}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Recent Scans</CardTitle>
+                  <CardDescription>
+                    {selectedProject ? `Project: ${selectedProject.name}` : "Select a project"}
+                  </CardDescription>
+                </div>
+                {scansLoading && (
+                  <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {scansError && (
                 <div className="mb-3 text-sm text-red-600">{scansError}</div>
               )}
-              {scansLoading ? (
-                <div className="text-sm text-muted-foreground">Loading scans...</div>
-              ) : scans.length === 0 ? (
+              {scans.length === 0 && !scansLoading ? (
                 <div className="text-sm text-muted-foreground">No scans yet.</div>
               ) : (
                 <div className="space-y-2">
+                  {scansLoading && scans.length === 0 && (
+                    <>
+                      {/* Skeleton loading states */}
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="w-full rounded-lg border p-3 animate-pulse">
+                          <div className="flex items-center justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="h-6 w-20 bg-muted rounded"></div>
+                                <div className="h-4 w-16 bg-muted rounded"></div>
+                              </div>
+                              <div className="h-4 w-32 bg-muted rounded mb-1"></div>
+                              <div className="h-3 w-24 bg-muted rounded"></div>
+                            </div>
+                            <div className="h-4 w-4 bg-muted rounded"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                   {scans
                     .filter((s) =>
                       search.trim()
@@ -653,7 +885,7 @@ export default function SecurityClient({
                           onClick={() => setSelectedScanId(scan.id)}
                           className={cn(
                             "w-full text-left rounded-lg border p-3 hover:bg-accent/50 transition-colors",
-                            selectedScanId === scan.id && "ring-2 ring-teal-600"
+                            selectedScanId === scan.id && "ring-2 ring-orlixis-teal"
                           )}
                         >
                           <div className="flex items-center justify-between">
@@ -664,7 +896,7 @@ export default function SecurityClient({
                                 </Badge>
                                 <span className="text-xs text-muted-foreground truncate">
                                   {formatRelativeTime(
-                                    (scan.startedAt as any) || new Date().toISOString()
+                                    String(scan.startedAt) || new Date().toISOString()
                                   )}
                                 </span>
                               </div>
@@ -696,9 +928,9 @@ export default function SecurityClient({
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   )
 }
 

@@ -386,10 +386,15 @@ export default function Dashboard() {
                         <div className="min-w-0">
                           <p className="font-medium text-foreground truncate">{project.name}</p>
                           <div className="flex items-center flex-wrap gap-2 mt-1">
-                            <Badge variant="outline" size="sm" className={getStatusColor(project.status)}>
+                            <Badge variant="outline" size="sm" className={getStatusColor(project.status)}
+                              translucent
+                              blurred>
                               {project.status}
                             </Badge>
-                            <Badge variant={project.issues > 0 ? getSeverityVariant("high") : "info"} size="sm" className="bg-red-900/50">
+                            <Badge variant={project.issues > 0 ? getSeverityVariant("high") : "info"} size="sm" className="bg-red-900/50"
+                              translucent
+                              blurred
+                            >
                               {project.issues} issues
                             </Badge>
                             <span className="text-xs text-muted-foreground truncate">

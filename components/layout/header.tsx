@@ -8,17 +8,15 @@ import { useSession, signOut } from "next-auth/react"
 import {
   Search,
   Bell,
-  Settings,
   User,
-  FileText,
-  Upload,
   BarChart3,
   Shield,
   Menu,
   X,
   LogOut,
-  FolderPlus,
-  Folder
+  Folder,
+  Home,
+  ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -34,26 +32,16 @@ import {
 import { cn } from "@/lib/utils"
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: BarChart3 },
+  { name: "Dashboard", href: "/", icon: Home },
   { name: "Projects", href: "/projects", icon: Folder },
-  { name: "Reports", href: "/projects/reports", icon: FileText },
   { name: "Security", href: "/security", icon: Shield },
 ]
 
 export function Header() {
   const pathname = usePathname()
   const { data: session, status } = useSession()
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [imageError, setImageError] = useState(false)
-
-  // Debug logging for image URL
-  React.useEffect(() => {
-    if (session?.user?.image) {
-      console.log("Header: User image URL:", session.user.image)
-    } else {
-      console.log("Header: No user image found")
-    }
-  }, [session?.user?.image])
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/auth/signin" })
@@ -66,6 +54,7 @@ export function Header() {
     return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase()
   }
 
+  // Loading state
   if (status === "loading") {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -84,6 +73,7 @@ export function Header() {
     )
   }
 
+  // Unauthenticated state
   if (!session) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -116,6 +106,7 @@ export function Header() {
     )
   }
 
+  // Authenticated state
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto max-w-[1580px] px-4 sm:px-6 lg:px-8">
@@ -143,7 +134,8 @@ export function Header() {
           <nav className="hidden md:flex items-center space-x-1">
             {navigation.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href ||
+                (item.href === "/projects" && pathname.startsWith("/projects"))
 
               return (
                 <Link
@@ -169,7 +161,7 @@ export function Header() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
-                placeholder="Search projects, reports..."
+                placeholder="Search projects, scans..."
                 className="w-full rounded-md border border-input bg-background px-10 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orlixis-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
@@ -178,7 +170,7 @@ export function Header() {
           {/* Right Side Actions */}
           <div className="flex items-center space-x-2">
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative" title="Notifications">
               <Bell className="h-4 w-4" />
               <Badge
                 variant="orlixis-subtle"
@@ -195,10 +187,10 @@ export function Header() {
             {/* User Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
-                  className="relative h-8 w-8 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-orlixis-teal transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orlixis-teal focus:ring-offset-2 bg-transparent p-0 hover:shadow-lg hover:scale-105 active:scale-95"
+                <Button
+                  variant="ghost"
+                  className="relative h-8 w-8 rounded-full p-0 hover:bg-accent"
                   aria-label="Open user menu"
-                  type="button"
                 >
                   {session.user?.image && !imageError ? (
                     <Image
@@ -207,11 +199,7 @@ export function Header() {
                       width={32}
                       height={32}
                       className="h-8 w-8 rounded-full object-cover"
-                      onError={(e) => {
-                        console.log("Header: Image load error for URL:", session.user?.image)
-                        setImageError(true)
-                      }}
-                      onLoad={() => console.log("Header: Image loaded successfully:", session.user?.image)}
+                      onError={() => setImageError(true)}
                       unoptimized
                       priority
                     />
@@ -222,15 +210,15 @@ export function Header() {
                       </span>
                     </div>
                   )}
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl rounded-lg p-2"
+                className="w-64"
                 align="end"
                 forceMount
                 sideOffset={8}
               >
-                <DropdownMenuLabel className="font-normal px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md mb-2">
+                <DropdownMenuLabel className="font-normal">
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
                       {session.user?.image && !imageError ? (
@@ -240,11 +228,7 @@ export function Header() {
                           width={40}
                           height={40}
                           className="h-10 w-10 rounded-full border-2 border-orlixis-teal/20 object-cover"
-                          onError={(e) => {
-                            console.log("Header dropdown: Image load error for URL:", session.user?.image)
-                            setImageError(true)
-                          }}
-                          onLoad={() => console.log("Header dropdown: Image loaded successfully:", session.user?.image)}
+                          onError={() => setImageError(true)}
                           unoptimized
                           priority
                         />
@@ -257,46 +241,36 @@ export function Header() {
                       )}
                     </div>
                     <div className="flex flex-col space-y-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      <p className="text-sm font-semibold truncate">
                         {session.user?.name || "User"}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {session.user?.email}
                       </p>
                     </div>
                   </div>
                 </DropdownMenuLabel>
 
-                <div className="space-y-1">
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/profile"
-                      className="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer group"
-                    >
-                      <User className="mr-3 h-4 w-4 text-gray-500 group-hover:text-orlixis-teal transition-colors" />
-                      <span className="font-medium">Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
+                <DropdownMenuSeparator />
 
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/settings"
-                      className="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer group"
-                    >
-                      <Settings className="mr-3 h-4 w-4 text-gray-500 group-hover:text-orlixis-teal transition-colors" />
-                      <span className="font-medium">Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/profile"
+                    className="flex items-center w-full cursor-pointer"
+                  >
+                    <User className="mr-3 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
 
-                <DropdownMenuSeparator className="my-2 border-gray-200 dark:border-gray-700" />
+                <DropdownMenuSeparator />
 
                 <DropdownMenuItem
-                  className="flex items-center px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors cursor-pointer group"
+                  className="flex items-center w-full text-red-600 dark:text-red-400 cursor-pointer"
                   onClick={handleSignOut}
                 >
-                  <LogOut className="mr-3 h-4 w-4 group-hover:text-red-700 dark:group-hover:text-red-300 transition-colors" />
-                  <span className="font-medium">Sign out</span>
+                  <LogOut className="mr-3 h-4 w-4" />
+                  <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -307,6 +281,7 @@ export function Header() {
               size="icon"
               className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle mobile menu"
             >
               {mobileMenuOpen ? (
                 <X className="h-4 w-4" />
@@ -327,7 +302,7 @@ export function Header() {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="search"
-                    placeholder="Search projects, reports..."
+                    placeholder="Search projects, scans..."
                     className="w-full rounded-md border border-input bg-background px-10 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orlixis-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
@@ -337,7 +312,8 @@ export function Header() {
               <nav className="flex flex-col space-y-1">
                 {navigation.map((item) => {
                   const Icon = item.icon
-                  const isActive = pathname === item.href
+                  const isActive = pathname === item.href ||
+                    (item.href === "/projects" && pathname.startsWith("/projects"))
 
                   return (
                     <Link
@@ -357,6 +333,28 @@ export function Header() {
                   )
                 })}
               </nav>
+
+              {/* Mobile User Section */}
+              <div className="mt-6 pt-4 border-t">
+                <Link
+                  href="/profile"
+                  className="flex items-center space-x-3 rounded-md px-3 py-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <User className="h-5 w-5" />
+                  <span>Profile</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false)
+                    handleSignOut()
+                  }}
+                  className="flex items-center space-x-3 rounded-md px-3 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full text-left"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span>Sign out</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -111,7 +111,10 @@ function ProjectCard({ project }: { project: Project }) {
               {project.description || "No description provided."}
             </CardDescription>
           </div>
-          <Badge variant={statusBadgeVariant(project.status)} className="shrink-0 capitalize">
+          <Badge variant={statusBadgeVariant(project.status)}
+            blurred
+            translucent
+            className="shrink-0 capitalize">
             {project.status.toLowerCase()}
           </Badge>
         </div>
