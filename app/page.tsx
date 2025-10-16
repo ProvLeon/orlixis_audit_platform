@@ -36,7 +36,10 @@ export default function HomePage() {
               <a href="#security" className="hover:text-orlixis-teal transition-colors">Security</a>
               <a href="#faq" className="hover:text-orlixis-teal transition-colors">FAQ</a>
             </nav>
+
             <div className="flex items-center gap-3">
+              <ThemeToggle />
+
               <Link
                 href="/auth/signin"
                 className="hidden rounded-md border border-orlixis-teal/40 px-4 py-2 text-sm hover:border-orlixis-teal hover:text-orlixis-teal md:inline-block"
