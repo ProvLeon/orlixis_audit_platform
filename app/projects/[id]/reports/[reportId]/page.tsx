@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth/config"
 import { prisma } from "@/lib/prisma"
+import { dedupeVulnerabilities, computeScoreAndRisk, unifySecurityMetric } from "@/lib/reportTheme"
 import { PageLayout } from "@/components/layout/authenticated-layout"
 import { ReportViewerWrapper } from "@/components/report-viewer-wrapper"
 import { Badge } from "@/components/ui/badge"
@@ -113,7 +114,45 @@ function transformReportData(report: any, project: any, vulnerabilities: any[], 
     throw new Error("Invalid report or project data")
   }
 
-  return {
+  // Deduplicate vulnerabilities using shared utilities
+  const deduped = dedupeVulnerabilities(vulnerabilities || [])
+
+  // Group vulnerabilities by title/category/CWE and aggregate locations across files
+  const groupedFindings = (() => {
+    const rank = (s: string) => ({ CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0 } as const)[s] ?? 0
+    const map = new Map<string, any>()
+    for (const v of deduped) {
+      const key = `${(v.title || "").trim().toLowerCase()}|${(v.category || "").trim().toLowerCase()}|${(v.cwe || "").toString().toLowerCase()}`
+      const loc = { file: v.filePath || "Unknown file", line: v.line || null, function: v.function || null }
+      const prev = map.get(key)
+      if (!prev) {
+        map.set(key, { ...v, locations: [loc] })
+      } else {
+        prev.locations.push(loc)
+        if (rank(v.severity) > rank(prev.severity)) prev.severity = v.severity
+        if ((v.cvss ?? -1) > (prev.cvss ?? -1)) prev.cvss = v.cvss
+        if (v.description && (!prev.description || prev.description.length < v.description.length)) prev.description = v.description
+        if (v.recommendation && (!prev.recommendation || prev.recommendation.length < v.recommendation.length)) prev.recommendation = v.recommendation
+      }
+    }
+    return Array.from(map.values()).map(v => ({
+      id: v.id || "unknown",
+      title: v.title || `${v.category || "Security"} Vulnerability`,
+      severity: v.severity || "LOW",
+      category: v.category || "UNKNOWN",
+      description: v.description || "No description available",
+      location: v.locations?.[0] || { file: "Unknown file", line: null, function: null },
+      impact: "Potential security risk that could affect application security",
+      recommendation: v.recommendation || "Review and fix this vulnerability",
+      cwe: v.cwe ? `CWE-${v.cwe}` : undefined,
+      cvss: v.cvss || null,
+      locations: v.locations || []
+    }))
+  })()
+
+  // Compute unified score and risk using shared utilities
+  const { score: overallScore, risk } = computeScoreAndRisk(groupedFindings)
+    return {
     project: {
       id: project.id || "",
       name: project.name || "Unknown Project",
@@ -135,38 +174,21 @@ function transformReportData(report: any, project: any, vulnerabilities: any[], 
         (safeDate(scan.completedAt).getTime() - safeDate(scan.startedAt).getTime()) :
         60000 // Default 1 minute
     },
-    vulnerabilities: (vulnerabilities || []).map(vuln => ({
-      id: vuln.id || "unknown",
-      title: vuln.title || `${vuln.category || "Security"} Vulnerability`,
-      severity: vuln.severity || "LOW",
-      category: vuln.category || "UNKNOWN",
-      description: vuln.description || "No description available",
-      location: {
-        file: vuln.filePath || "Unknown file",
-        line: vuln.line || null,
-        function: vuln.function || null
-      },
-      impact: "Potential security risk that could affect application security",
-      recommendation: vuln.recommendation || "Review and fix this vulnerability",
-      cwe: vuln.cwe ? `CWE-${vuln.cwe}` : undefined,
-      cvss: vuln.cvss || null
-    })),
+    vulnerabilities: groupedFindings,
     qualityMetrics: [
       {
         name: "Code Quality Score",
         score: 85,
         maxScore: 100,
-        issues: vulnerabilities.filter(v => v.category === "CODE_QUALITY").length,
+        issues: groupedFindings.filter(v => v.category === "CODE_QUALITY").length,
         trend: "up" as const,
         description: "Overall assessment of code quality based on static analysis"
       },
       {
         name: "Security Score",
-        score: 78,
+        score: unifySecurityMetric(overallScore),
         maxScore: 100,
-        issues: vulnerabilities.filter(v =>
-          ["INJECTION", "XSS", "AUTHENTICATION", "AUTHORIZATION", "CRYPTOGRAPHY"].includes(v.category)
-        ).length,
+        issues: groupedFindings.length,
         trend: "stable" as const,
         description: "Security posture based on identified vulnerabilities"
       }
@@ -198,29 +220,20 @@ function transformReportData(report: any, project: any, vulnerabilities: any[], 
       }
     ],
     summary: {
-      overallScore: Math.max(0, 100 - (vulnerabilities.length * 5)),
-      riskLevel: getRiskLevel(vulnerabilities),
-      totalIssues: vulnerabilities.length,
+      overallScore: overallScore,
+      riskLevel: risk,
+      totalIssues: groupedFindings.length,
       fixedIssues: 0,
-      newIssues: vulnerabilities.length
+      newIssues: groupedFindings.length
     },
-    recommendations: generateRecommendations(vulnerabilities)
+    recommendations: generateRecommendations(groupedFindings)
   }
 }
 
 function getRiskLevel(vulnerabilities: any[]): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
-  if (!Array.isArray(vulnerabilities) || vulnerabilities.length === 0) {
-    return "LOW"
-  }
-
-  const criticalCount = vulnerabilities.filter(v => v.severity === "CRITICAL").length
-  const highCount = vulnerabilities.filter(v => v.severity === "HIGH").length
-  const mediumCount = vulnerabilities.filter(v => v.severity === "MEDIUM").length
-
-  if (criticalCount > 0) return "CRITICAL"
-  if (highCount > 2) return "HIGH"
-  if (highCount > 0 || mediumCount > 5) return "MEDIUM"
-  return "LOW"
+  // Use the unified scoring logic from reportTheme
+  const { risk } = computeScoreAndRisk(vulnerabilities)
+  return risk
 }
 
 function generateRecommendations(vulnerabilities: any[]) {

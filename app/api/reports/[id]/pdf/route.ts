@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth/config"
 import { prisma } from "@/lib/prisma"
 import puppeteer from "puppeteer"
+import { dedupeVulnerabilities, computeScoreAndRisk, unifySecurityMetric, countBySeverity } from "@/lib/reportTheme"
 
 export async function GET(
   request: NextRequest,
@@ -218,9 +219,17 @@ async function generateProfessionalPDF(
 function generateProfessionalHTML(
   report: any,
   project: any,
-  vulnerabilities: any[],
+  rawVulnerabilities: any[],
   scan: any
 ): string {
+  // Deduplicate vulnerabilities using shared utilities
+  const vulnerabilities = dedupeVulnerabilities(rawVulnerabilities || [])
+
+  // Compute unified score and risk using shared utilities
+  const { score: overallScore, risk } = computeScoreAndRisk(vulnerabilities)
+
+  // Calculate severity counts from deduped vulnerabilities
+  const severityCounts = countBySeverity(vulnerabilities)
   const safeDate = (date: any): Date => {
     if (!date) return new Date()
     if (date instanceof Date) return date
@@ -254,29 +263,17 @@ function generateProfessionalHTML(
     return severityOrder.indexOf(a.severity) - severityOrder.indexOf(b.severity)
   })
 
-  const getOverallScore = () => {
-    const criticalCount = vulnerabilities.filter(v => v.severity === 'CRITICAL').length
-    const highCount = vulnerabilities.filter(v => v.severity === 'HIGH').length
-    const mediumCount = vulnerabilities.filter(v => v.severity === 'MEDIUM').length
-
-    let score = 100
-    score -= criticalCount * 20
-    score -= highCount * 10
-    score -= mediumCount * 5
-
-    return Math.max(0, score)
+  const getRiskLevel = (riskType: string) => {
+    switch(riskType) {
+      case 'LOW': return { level: 'LOW', color: '#007b8c' }
+      case 'MEDIUM': return { level: 'MEDIUM', color: '#d97706' }
+      case 'HIGH': return { level: 'HIGH', color: '#ea580c' }
+      case 'CRITICAL': return { level: 'CRITICAL', color: '#dc2626' }
+      default: return { level: 'LOW', color: '#007b8c' }
+    }
   }
 
-  const getRiskLevel = () => {
-    const score = getOverallScore()
-    if (score >= 90) return { level: 'LOW', color: '#007b8c' }
-    if (score >= 70) return { level: 'MEDIUM', color: '#d97706' }
-    if (score >= 40) return { level: 'HIGH', color: '#ea580c' }
-    return { level: 'CRITICAL', color: '#dc2626' }
-  }
-
-  const overallScore = getOverallScore()
-  const riskLevel = getRiskLevel()
+  const riskLevel = getRiskLevel(risk)
 
   return `
 <!DOCTYPE html>
@@ -664,8 +661,8 @@ function generateProfessionalHTML(
             <div class="prose">
                 <p>This comprehensive security audit report provides a detailed analysis of the <strong style="color: #007b8c;">${project.name}</strong> project. The assessment covers security vulnerabilities, code quality metrics, and performance indicators.</p>
 
-                ${vulnerabilities.filter(v => v.severity === 'CRITICAL').length > 0 ?
-                    `<p><strong>Critical Findings:</strong> ${vulnerabilities.filter(v => v.severity === 'CRITICAL').length} critical vulnerabilities require immediate attention to prevent potential security breaches.</p>` :
+                ${severityCounts.CRITICAL > 0 ?
+                    `<p><strong>Critical Findings:</strong> ${severityCounts.CRITICAL} critical vulnerabilities require immediate attention to prevent potential security breaches.</p>` :
                     ''
                 }
 
@@ -675,19 +672,19 @@ function generateProfessionalHTML(
 
         <div class="summary-grid">
             <div class="summary-card high-risk">
-                <div class="number">${vulnerabilities.filter(v => v.severity === 'CRITICAL' || v.severity === 'HIGH').length}</div>
+                <div class="number">${severityCounts.CRITICAL + severityCounts.HIGH}</div>
                 <div class="label">High-Risk Issues</div>
                 <div class="description">Require immediate attention</div>
             </div>
 
             <div class="summary-card medium-risk">
-                <div class="number">${vulnerabilities.filter(v => v.severity === 'MEDIUM').length}</div>
+                <div class="number">${severityCounts.MEDIUM}</div>
                 <div class="label">Medium-Risk Issues</div>
                 <div class="description">Should be addressed soon</div>
             </div>
 
             <div class="summary-card low-risk">
-                <div class="number">${vulnerabilities.filter(v => v.severity === 'LOW' || v.severity === 'INFO').length}</div>
+                <div class="number">${severityCounts.LOW + severityCounts.INFO}</div>
                 <div class="label">Low-Risk Issues</div>
                 <div class="description">Good to fix when possible</div>
             </div>
@@ -699,7 +696,7 @@ function generateProfessionalHTML(
         <h2 class="section-title">Vulnerability Overview</h2>
         <div class="vulnerability-grid">
             ${Object.keys(severityColors).map(severity => {
-                const count = vulnerabilities.filter(v => v.severity === severity).length
+                const count = severityCounts[severity as keyof typeof severityCounts] || 0
                 const colors = severityColors[severity as keyof typeof severityColors]
                 return `
                 <div class="vuln-summary" style="background: ${colors.bg}; border-color: ${colors.border};">

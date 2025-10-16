@@ -17,6 +17,7 @@ import {
   ClipboardList,
   ExternalLink,
   FileCode,
+  FileText,
   FolderOpenDot,
   GitBranch,
   Globe,
@@ -479,8 +480,8 @@ export function ProjectDetailsClient({
                   </Button>
                   <Button asChild variant="outline" className="gap-2 hover:shadow-md transition-all">
                     <Link href={`/projects/${project.id}/reports`}>
-                      <Download className="h-4 w-4" />
-                      Download Reports
+                      <FileText className="h-4 w-4" />
+                      Reports
                     </Link>
                   </Button>
                 </div>
