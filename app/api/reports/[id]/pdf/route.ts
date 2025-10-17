@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth/config"
 import { prisma } from "@/lib/prisma"
-import { vercelPdfGenerator } from "@/lib/pdf-utils-vercel"
-import { reactPdfGenerator } from "@/lib/pdf-react-generator"
-import { dedupeVulnerabilities, computeScoreAndRisk, unifySecurityMetric, countBySeverity } from "@/lib/reportTheme"
+import puppeteer from "puppeteer"
+import { dedupeVulnerabilities, computeScoreAndRisk, countBySeverity } from "@/lib/reportTheme"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -121,8 +120,19 @@ export async function GET(
       totalLines: estimatedLines
     }
 
+    // Calculate scan duration if available
+    let scanDuration = null
+    if (scan?.startedAt && scan?.completedAt) {
+      const startTime = new Date(scan.startedAt).getTime()
+      const endTime = new Date(scan.completedAt).getTime()
+      scanDuration = endTime - startTime // Duration in milliseconds
+    }
+
+    // Add duration to scan object
+    const enhancedScan = scan ? { ...scan, duration: scanDuration } : null
+
     // Generate PDF from enhanced template
-    const pdfBuffer = await generateProfessionalPDF(report, enhancedProject, vulnerabilities, scan)
+    const pdfBuffer = await generateProfessionalPDF(report, enhancedProject, vulnerabilities, enhancedScan)
 
     // Update report with PDF info
     await prisma.report.update({
@@ -157,16 +167,40 @@ async function generateProfessionalPDF(
   vulnerabilities: any[],
   scan: any
 ): Promise<Buffer> {
-  console.log('Starting PDF generation for report:', report.id)
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--disable-gpu'
+    ]
+  })
 
-  // Strategy 1: Try Playwright with Chrome (HTML-based PDF)
   try {
-    console.log('Attempting PDF generation with Playwright...')
+    const page = await browser.newPage()
 
+    // Set viewport for consistent rendering
+    await page.setViewport({ width: 1200, height: 1600 })
+
+    // Generate professional HTML content
     const htmlContent = generateProfessionalHTML(report, project, vulnerabilities, scan)
 
-    const pdfBuffer = await vercelPdfGenerator.generatePDF(htmlContent, {
+    // Set HTML content
+    await page.setContent(htmlContent, {
+      waitUntil: 'networkidle0',
+      timeout: 60000
+    })
+
+    // Generate PDF with professional formatting
+    const pdfUint8Array = await page.pdf({
       format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
       margin: {
         top: '15mm',
         right: '15mm',
@@ -183,49 +217,13 @@ async function generateProfessionalPDF(
         <div style="font-size: 9px; color: #666; text-align: center; width: 100%; padding: 5px;">
           <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span> | Generated on ${new Date().toLocaleDateString()}</span>
         </div>
-      `,
-      timeout: 120000 // 2 minutes timeout for serverless
+      `
     })
 
-    console.log('Playwright PDF generated successfully, size:', pdfBuffer.length, 'bytes')
-    return pdfBuffer
+    return Buffer.from(pdfUint8Array)
 
-  } catch (playwrightError: any) {
-    console.warn('Playwright PDF generation failed, trying React PDF fallback:', playwrightError.message)
-
-    // Strategy 2: Fallback to React PDF (Chrome-free)
-    try {
-      console.log('Attempting PDF generation with React PDF...')
-
-      const pdfBuffer = await reactPdfGenerator.generatePDF(report, project, vulnerabilities, scan, {
-        format: 'A4',
-        timeout: 60000
-      })
-
-      console.log('React PDF generated successfully, size:', pdfBuffer.length, 'bytes')
-      return pdfBuffer
-
-    } catch (reactPdfError: any) {
-      console.error('Both PDF generation methods failed')
-      console.error('Playwright error:', playwrightError.message)
-      console.error('React PDF error:', reactPdfError.message)
-
-      // Provide comprehensive error information
-      throw new Error(`
-PDF generation failed with both methods:
-
-1. Playwright (Chrome-based): ${playwrightError.message}
-2. React PDF (Chrome-free): ${reactPdfError.message}
-
-This may be due to:
-- Missing dependencies (chrome-aws-lambda, playwright-core, @react-pdf/renderer)
-- Serverless environment limitations
-- Memory constraints
-- Network timeouts
-
-Please check your deployment configuration and try again.
-      `.trim())
-    }
+  } finally {
+    await browser.close()
   }
 }
 
@@ -240,6 +238,17 @@ function generateProfessionalHTML(
 
   // Compute unified score and risk using shared utilities
   const { score: overallScore, risk } = computeScoreAndRisk(vulnerabilities)
+  console.log('PDF Overall Score:', overallScore, 'Risk Level:', risk)
+
+  // Calculate scan duration if available
+  let scanDurationSeconds = null
+  if (scan?.duration) {
+    scanDurationSeconds = Math.round(scan.duration / 1000)
+  } else if (scan?.startedAt && scan?.completedAt) {
+    const startTime = new Date(scan.startedAt).getTime()
+    const endTime = new Date(scan.completedAt).getTime()
+    scanDurationSeconds = Math.round((endTime - startTime) / 1000)
+  }
 
   // Calculate severity counts from deduped vulnerabilities
   const severityCounts = countBySeverity(vulnerabilities)
@@ -652,6 +661,7 @@ function generateProfessionalHTML(
                 <p><strong>Type:</strong> ${report.type || 'Security'}</p>
                 <p><strong>Started:</strong> ${formatDateTime(scan?.startedAt || report.createdAt)}</p>
                 <p><strong>Completed:</strong> ${formatDateTime(scan?.completedAt || report.updatedAt)}</p>
+                <p><strong>Duration:</strong> ${scanDurationSeconds ? scanDurationSeconds + 's' : 'N/A'}</p>
                 <p><strong>Issues Found:</strong> ${vulnerabilities?.length || 0}</p>
             </div>
 
@@ -789,7 +799,7 @@ function generateProfessionalHTML(
             <h3>Scan Details</h3>
             <p><strong>Engine:</strong> Orlixis Security Scanner</p>
             <p><strong>Type:</strong> ${report.type || 'Security'}</p>
-            <p><strong>Duration:</strong> ${scan?.duration ? Math.round(scan.duration / 1000) + 's' : 'N/A'}</p>
+            <p><strong>Duration:</strong> ${scanDurationSeconds ? scanDurationSeconds + 's' : 'N/A'}</p>
         </div>
 
         <div>
