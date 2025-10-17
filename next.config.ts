@@ -45,7 +45,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['playwright-core', 'chrome-aws-lambda', '@react-pdf/renderer'],
   },
   // Webpack configuration for PDF generation libraries
-  webpack: (config: unknown, { isServer }: { isServer: unknown }) => {
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
     if (isServer) {
       // Externalize playwright and chrome dependencies for serverless
       config.externals.push({
@@ -60,16 +60,26 @@ const nextConfig = {
 
     return config
   },
-  // API route configuration
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: '20mb',
+  // Configure serverless functions for Vercel
+  async rewrites() {
+    return []
   },
-  // Server-side configuration
-  serverRuntimeConfig: {
-    maxDuration: 300, // 5 minutes for PDF generation
+  async headers() {
+    return [
+      {
+        source: '/api/reports/:id/pdf',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Content-Type',
+            value: 'application/pdf',
+          },
+        ],
+      },
+    ]
   },
 }
 
