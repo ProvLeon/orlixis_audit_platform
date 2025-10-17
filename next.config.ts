@@ -45,21 +45,6 @@ const nextConfig = {
     serverComponentsExternalPackages: ['playwright-core', 'chrome-aws-lambda', '@react-pdf/renderer'],
   },
   // Webpack configuration for PDF generation libraries
-  webpack: (config: any, { isServer }: { isServer: boolean }) => {
-    if (isServer) {
-      // Externalize playwright and chrome dependencies for serverless
-      config.externals.push({
-        'playwright-core': 'commonjs playwright-core',
-        'chrome-aws-lambda': 'commonjs chrome-aws-lambda',
-      })
-    }
-
-    // Handle canvas and other native dependencies
-    config.resolve.alias.canvas = false
-    config.resolve.alias['pdfkit'] = false
-
-    return config
-  },
   // Configure serverless functions for Vercel
   async rewrites() {
     return []
