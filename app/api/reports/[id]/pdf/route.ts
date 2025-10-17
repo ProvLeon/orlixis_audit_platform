@@ -36,34 +36,40 @@ export async function GET(
       resolvedUserId = upserted.id
     }
 
-    // Fetch the report with related data
-    const [report, vulnerabilities, project, scan] = await Promise.all([
-      prisma.report.findFirst({
-        where: { id: reportId },
-        include: {
-          project: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              language: true,
-              framework: true,
-              repositoryUrl: true,
-              branch: true,
-              size: true,
-              userId: true
-            }
+    // First fetch the report to get project information
+    const report = await prisma.report.findFirst({
+      where: { id: reportId },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            language: true,
+            framework: true,
+            repositoryUrl: true,
+            branch: true,
+            size: true,
+            userId: true
           }
         }
-      }),
+      }
+    })
+
+    if (!report) {
+      return NextResponse.json({ error: "Report not found" }, { status: 404 })
+    }
+
+    const project = report.project
+
+    if (!project || project.userId !== resolvedUserId) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    }
+
+    // Now fetch vulnerabilities and scan with the confirmed project ID
+    const [vulnerabilities, scan] = await Promise.all([
       prisma.vulnerability.findMany({
-        where: {
-          project: {
-            reports: {
-              some: { id: reportId }
-            }
-          }
-        },
+        where: { projectId: project.id },
         select: {
           id: true,
           title: true,
@@ -83,25 +89,13 @@ export async function GET(
           { discoveredAt: "desc" }
         ]
       }),
-      prisma.project.findFirst({
-        where: {
-          reports: { some: { id: reportId } },
-          userId: resolvedUserId
-        }
-      }),
       prisma.scan.findFirst({
-        where: {
-          project: {
-            reports: { some: { id: reportId } }
-          }
-        },
+        where: { projectId: project.id },
         orderBy: { startedAt: "desc" }
       })
     ])
 
-    if (!report || !project) {
-      return NextResponse.json({ error: "Report not found or access denied" }, { status: 404 })
-    }
+
 
     // Now fetch project file statistics with confirmed project ID
     const projectStats = await prisma.projectFile.aggregate({
@@ -234,11 +228,36 @@ function generateProfessionalHTML(
   scan: any
 ): string {
   // Deduplicate vulnerabilities using shared utilities
-  const vulnerabilities = dedupeVulnerabilities(rawVulnerabilities || [])
+  console.log('PDF Raw vulnerability count:', rawVulnerabilities?.length || 0)
+  const deduped = dedupeVulnerabilities(rawVulnerabilities || [])
+  console.log('PDF After deduplication:', deduped.length)
+
+  // Group vulnerabilities by title/category/CWE and aggregate locations across files (same as web report)
+  const vulnerabilities = (() => {
+    const rank = (s: string) => ({ CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0 } as const)[s] ?? 0
+    const map = new Map<string, any>()
+    for (const v of deduped) {
+      const key = `${(v.title || "").trim().toLowerCase()}|${(v.category || "").trim().toLowerCase()}|${(v.cwe || "").toString().toLowerCase()}`
+      const loc = { file: v.filePath || "Unknown file", line: v.line || null, function: v.function || null }
+      const prev = map.get(key)
+      if (!prev) {
+        map.set(key, { ...v, locations: [loc] })
+      } else {
+        prev.locations.push(loc)
+        if (rank(v.severity) > rank(prev.severity)) prev.severity = v.severity
+        if ((v.cvss ?? -1) > (prev.cvss ?? -1)) prev.cvss = v.cvss
+        if (v.description && (!prev.description || prev.description.length < v.description.length)) prev.description = v.description
+        if (v.recommendation && (!prev.recommendation || prev.recommendation.length < v.recommendation.length)) prev.recommendation = v.recommendation
+      }
+    }
+    return Array.from(map.values())
+  })()
+
+  console.log('PDF After grouping/final count:', vulnerabilities.length)
 
   // Compute unified score and risk using shared utilities
   const { score: overallScore, risk } = computeScoreAndRisk(vulnerabilities)
-  console.log('PDF Overall Score:', overallScore, 'Risk Level:', risk)
+  console.log('PDF Overall Score:', overallScore, 'Risk Level:', risk, 'Total Vulnerabilities:', vulnerabilities.length)
 
   // Calculate scan duration if available
   let scanDurationSeconds = null

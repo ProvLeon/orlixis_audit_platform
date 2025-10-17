@@ -356,7 +356,17 @@ export class ReactPDFGenerator {
       })
 
       // Generate PDF buffer
-      const pdfBuffer = await pdf(pdfDoc).toBuffer()
+      const pdfInstance = pdf(pdfDoc)
+      const pdfArrayBuffer = await pdfInstance.toBuffer()
+
+      // Ensure we have a proper Buffer
+      const pdfBuffer = Buffer.isBuffer(pdfArrayBuffer)
+        ? pdfArrayBuffer
+        : Buffer.from(pdfArrayBuffer)
+
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('Generated PDF buffer is empty or invalid')
+      }
 
       console.log('React PDF generated successfully, size:', pdfBuffer.length, 'bytes')
       return pdfBuffer
@@ -416,6 +426,10 @@ export class ReactPDFGenerator {
       const testScan = { id: 'test-scan' }
 
       const pdfBuffer = await this.generatePDF(testReport, testProject, testVulns, testScan)
+
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('Health check generated empty PDF buffer')
+      }
 
       return {
         success: true,

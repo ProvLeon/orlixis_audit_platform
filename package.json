@@ -12,7 +12,11 @@
     "check-oauth": "node scripts/check-oauth-setup.js",
     "setup-pdf": "node scripts/setup-pdf-generation.js",
     "test-pdf": "node scripts/setup-pdf-generation.js --test-only",
-    "postinstall": "node scripts/setup-pdf-generation.js --install-only || echo 'PDF setup failed - manual setup may be required'"
+    "fix-playwright": "node scripts/fix-playwright.js",
+    "deploy": "node scripts/deploy-vercel.js",
+    "deploy:prod": "node scripts/deploy-vercel.js --prod",
+    "deploy:quick": "node scripts/deploy-vercel.js --skip-tests",
+    "postinstall": "echo 'Skipping browser downloads for serverless deployment'"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.0",
