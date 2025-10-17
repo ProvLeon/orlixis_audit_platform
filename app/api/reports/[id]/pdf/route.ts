@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth/config"
 import { prisma } from "@/lib/prisma"
-import puppeteer from "puppeteer"
+import chromium from "chrome-aws-lambda"
+import puppeteer from "puppeteer-core"
+import fs from "fs"
 import { dedupeVulnerabilities, computeScoreAndRisk, countBySeverity } from "@/lib/reportTheme"
 
 export async function GET(
@@ -36,34 +38,36 @@ export async function GET(
       resolvedUserId = upserted.id
     }
 
-    // First fetch the report to get project information
-    const report = await prisma.report.findFirst({
-      where: { id: reportId },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            language: true,
-            framework: true,
-            repositoryUrl: true,
-            branch: true,
-            size: true,
-            userId: true
+    // First fetch the report and project
+    const [report, project] = await Promise.all([
+      prisma.report.findFirst({
+        where: { id: reportId },
+        include: {
+          project: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              language: true,
+              framework: true,
+              repositoryUrl: true,
+              branch: true,
+              size: true,
+              userId: true
+            }
           }
         }
-      }
-    })
+      }),
+      prisma.project.findFirst({
+        where: {
+          reports: { some: { id: reportId } },
+          userId: resolvedUserId
+        }
+      })
+    ])
 
-    if (!report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 })
-    }
-
-    const project = report.project
-
-    if (!project || project.userId !== resolvedUserId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    if (!report || !project) {
+      return NextResponse.json({ error: "Report not found or access denied" }, { status: 404 })
     }
 
     // Now fetch vulnerabilities and scan with the confirmed project ID
@@ -161,19 +165,97 @@ async function generateProfessionalPDF(
   vulnerabilities: any[],
   scan: any
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process',
-      '--disable-gpu'
-    ]
-  })
+  // Use chrome-aws-lambda in serverless (when executable exists), fall back to local Puppeteer otherwise
+  // Resolve Chromium/Chrome executable path robustly (serverless + local)
+  const awsExec = await chromium.executablePath
+  const envCandidates = [
+    process.env.CHROME_EXECUTABLE_PATH,
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.env.GOOGLE_CHROME_BIN,
+    process.env.CHROMIUM_PATH,
+  ].filter(Boolean) as string[]
+
+  const envExec =
+    envCandidates.find(p => {
+      try {
+        return fs.existsSync(p as string)
+      } catch {
+        return false
+      }
+    }) || null
+  const localCandidates =
+    process.platform === "darwin"
+      ? [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium"
+      ]
+      : process.platform === "win32"
+        ? [
+          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+        ]
+        : ["/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium"]
+  const localExec =
+    (localCandidates.find(p => {
+      try {
+        return fs.existsSync(p)
+      } catch {
+        return false
+      }
+    }) as string) || null
+  const executablePath = awsExec || envExec || localExec || null
+  const isChromiumAvailable = !!executablePath
+
+  let browser
+  try {
+    if (isChromiumAvailable) {
+      browser = await puppeteer.launch({
+        headless: true,
+        executablePath,
+        args: chromium.args,
+      })
+    } else {
+      // Attempt to use Puppeteer's downloaded Chromium only if it actually exists
+      try {
+        const pptr = (await import("puppeteer")).default as typeof import("puppeteer")
+        const pptrExec =
+          typeof (pptr as any).executablePath === "function"
+            ? (pptr as any).executablePath()
+            : null
+
+        if (pptrExec && fs.existsSync(pptrExec)) {
+          browser = await pptr.launch({
+            headless: true,
+            executablePath: pptrExec,
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-accelerated-2d-canvas',
+              '--no-first-run',
+              '--no-zygote',
+              '--single-process',
+              '--disable-gpu'
+            ],
+          })
+        } else {
+          throw new Error("Puppeteer Chromium not installed")
+        }
+      } catch {
+        // Provide a clear message when no executable is available anywhere
+        throw new Error(
+          "No Chromium executable found. Provide CHROME_EXECUTABLE_PATH or PUPPETEER_EXECUTABLE_PATH (or GOOGLE_CHROME_BIN/CHROMIUM_PATH), or ensure chrome-aws-lambda is available in this environment."
+        )
+      }
+    }
+  } catch (e) {
+    const hint = [
+      "Chromium not found for HTML-to-PDF.",
+      "Local fix: npx puppeteer browsers install chrome",
+      "Serverless fix: ensure chrome-aws-lambda is available or set CHROME_EXECUTABLE_PATH",
+    ].join(" | ")
+    throw new Error(`PDF browser launch failed: ${e instanceof Error ? e.message : String(e)}. ${hint}`)
+  }
 
   try {
     const page = await browser.newPage()
@@ -192,7 +274,7 @@ async function generateProfessionalPDF(
 
     // Generate PDF with professional formatting
     const pdfUint8Array = await page.pdf({
-      format: 'A4',
+      format: 'a4',
       printBackground: true,
       preferCSSPageSize: true,
       margin: {
@@ -217,7 +299,9 @@ async function generateProfessionalPDF(
     return Buffer.from(pdfUint8Array)
 
   } finally {
-    await browser.close()
+    if (browser) {
+      try { await browser.close() } catch { }
+    }
   }
 }
 
@@ -228,9 +312,7 @@ function generateProfessionalHTML(
   scan: any
 ): string {
   // Deduplicate vulnerabilities using shared utilities
-  console.log('PDF Raw vulnerability count:', rawVulnerabilities?.length || 0)
   const deduped = dedupeVulnerabilities(rawVulnerabilities || [])
-  console.log('PDF After deduplication:', deduped.length)
 
   // Group vulnerabilities by title/category/CWE and aggregate locations across files (same as web report)
   const vulnerabilities = (() => {
@@ -252,8 +334,6 @@ function generateProfessionalHTML(
     }
     return Array.from(map.values())
   })()
-
-  console.log('PDF After grouping/final count:', vulnerabilities.length)
 
   // Compute unified score and risk using shared utilities
   const { score: overallScore, risk } = computeScoreAndRisk(vulnerabilities)

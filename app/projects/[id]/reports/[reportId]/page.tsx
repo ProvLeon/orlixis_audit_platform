@@ -115,9 +115,7 @@ function transformReportData(report: any, project: any, vulnerabilities: any[], 
   }
 
   // Deduplicate vulnerabilities using shared utilities
-  console.log('Web Raw vulnerability count:', vulnerabilities?.length || 0)
   const deduped = dedupeVulnerabilities(vulnerabilities || [])
-  console.log('Web After deduplication:', deduped.length)
 
   // Group vulnerabilities by title/category/CWE and aggregate locations across files
   const groupedFindings = (() => {
@@ -152,11 +150,8 @@ function transformReportData(report: any, project: any, vulnerabilities: any[], 
     }))
   })()
 
-  console.log('Web After grouping/final count:', groupedFindings.length)
-
   // Compute unified score and risk using shared utilities
   const { score: overallScore, risk } = computeScoreAndRisk(groupedFindings)
-  console.log('Web Overall Score:', overallScore, 'Risk Level:', risk, 'Total Vulnerabilities:', groupedFindings.length)
   return {
     project: {
       id: project.id || "",
