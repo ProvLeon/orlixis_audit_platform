@@ -41,9 +41,7 @@ const nextConfig = {
     ],
   },
   // Optimize for serverless PDF generation
-  experimental: {
-    serverComponentsExternalPackages: ['playwright-core', 'chrome-aws-lambda', '@react-pdf/renderer'],
-  },
+  serverExternalPackages: ['playwright-core', 'chrome-aws-lambda', '@react-pdf/renderer'],
   // Webpack configuration for PDF generation libraries
   // Configure serverless functions for Vercel
   async rewrites() {
