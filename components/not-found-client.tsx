@@ -102,7 +102,7 @@ export default function NotFoundClient({ recent: initialRecent, currentUrl: init
           <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white/80 dark:bg-slate-900/80 backdrop-blur p-8 shadow-sm">
             <div className="flex flex-col items-center text-center">
               <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
-                We couldn't find that page
+                We couldn&apos;t find that page
               </h1>
               <p className="mt-2 max-w-prose text-slate-600 dark:text-slate-300">
                 The page may have been moved, renamed, or no longer exists. Use the tools below to quickly recover.
