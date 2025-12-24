@@ -43,3 +43,5 @@ yarn-error.log*
 next-env.d.ts
 */migrations/
 package-lock.json
+temp_auto_push.bat
+temp_interactive_push.bat
